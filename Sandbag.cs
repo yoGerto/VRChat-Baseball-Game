@@ -47,24 +47,19 @@ public class Sandbag : UdonSharpBehaviour
                 //Vector3 resultantImpulse = new Vector3(Mathf.Abs(contact.normal.x) * batVelocity.x, Mathf.Abs(contact.normal.y) * batVelocity.y, Mathf.Abs(contact.normal.z) * batVelocity.z);
                 //I need to find the angle between the normal and the velocity to use that to determine the contribution
 
-                float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) ); //this is the absolute distance of the contact normal, only considering 2D for now
+                float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) ); // This is the absolute distance of the contact normal, only considering 2D for now
                 float triangleSideB = Mathf.Sqrt( (batVelocity.x * batVelocity.x) + (batVelocity.z * batVelocity.z)); // This is the absolute distance of the velocity vector, again only 2D for now
                 float triangleSideC = Mathf.Sqrt((Mathf.Pow((batVelocity.x - contact.normal.x), 2)) + (Mathf.Pow((batVelocity.z - contact.normal.z), 2))); // This is the difference between the two Vectors
 
-                
-                Debug.Log("triangleSideA = " + triangleSideA);
-                Debug.Log("triangleSideB = " + triangleSideB);
-                Debug.Log("triangleSideC = " + triangleSideC);
-
-                //float angleBetweenNormalAndVelocity = Mathf.Acos((Mathf.Pow(triangleSideA, 2) + Mathf.Pow(triangleSideB, 2) - Mathf.Pow(triangleSideC, 2)) / 2 * triangleSideA * triangleSideB);
                 float topOfAngleEquation = (triangleSideA * triangleSideA) + (triangleSideB * triangleSideB) - (triangleSideC * triangleSideC);
                 float bottomOfAngleEquation = (2 * triangleSideA * triangleSideB);
 
                 float angleBetweenNormalAndVelocity = Mathf.Acos(topOfAngleEquation / bottomOfAngleEquation);
-                Debug.Log("angle = " + angleBetweenNormalAndVelocity * (180/Mathf.PI));
+                //Debug.Log("angle = " + angleBetweenNormalAndVelocity * (180/Mathf.PI));
+
+                Vector3 resultantImpulse = contact.normal * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
 
-                Vector3 resultantImpulse = contact.normal * batVelocity.magnitude;
                 rotationText.text += "resultantImpulse = " + resultantImpulse.ToString();
 
                 //Debug.Log("batVelocity = " + batVelocity.ToString());
