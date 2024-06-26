@@ -68,14 +68,7 @@ public class Sandbag : UdonSharpBehaviour
                 Debug.DrawRay(contact.point, batVelocity, Color.green, 1.0f);
                 Debug.DrawRay(contact.point, resultantImpulse, Color.blue, 1.0f);
                 Debug.DrawRay(contact.point, contact.normal, Color.red, 1.0f);
-
-                //Vector3 resultantImpulse = new Vector3(contact.normal.y * batVelocity.x, contact.normal.x * batVelocity.y, contact.normal.z * batVelocity.z);
-                //rotationText.text = linearMomentum.ToString();
-                //Debug.DrawRay(contact.point, resultantImpulse, Color.green, 1.0f);
             }
-            //Debug.Log(collision.collider.name);
-            //Debug.DrawRay(contact.point, contact.normal, Color.red, 1.0f);
-            //Debug.Log(contact.normal);
         }
         if (collision.collider.name == "BatPart (0)")
         {
@@ -113,50 +106,3 @@ public class Sandbag : UdonSharpBehaviour
         Vector3 angularVelocity = (angleOut * axisOut) / Time.fixedDeltaTime;
     }
 }
-
-/*
-//rotationText.text = bat.transform.position.ToString() + "\n" + "\n";
-//rotationText.text += bat.transform.rotation.ToString() + "\n" + "\n";
-
-// Essentially two things to calculate
-// The Linear Momentum and the Angular Momentum
-// Linear momentum is Mass * Velocity
-
-//float linearMomentum;
-
-batPosCurr = batParts[0].transform.position;
-batVelocity = (batPosCurr - batPosPrev) / Time.fixedDeltaTime;
-batPosPrev = batPosCurr;
-
-//rotationText.text += "Velocity = " + batVelocity.magnitude.ToString("0.00") + "m/s" + "\n" + "\n";
-
-linearMomentum = batVelocity.magnitude * m_ass;
-
-//rotationText.text += "Momentum = " + linearMomentum.ToString("0.00") + "kgm/s" + "\n" + "\n";
-
-//float angularVelocity;
-
-//batRotationYCurr = bat.transform.rotation;
-//batRotationYDiff = batRotationYCurr - batRotationYPrev;
-//batRotationYPrev = batRotationYCurr;
-
-float angleOut;
-Vector3 axisOut;
-
-batRotationCurr = batParts[0].transform.rotation;
-batRotationDelta = batRotationCurr * Quaternion.Inverse(batRotationPrev);
-batRotationPrev = batRotationCurr;
-
-batRotationDelta.ToAngleAxis(out angleOut, out axisOut);
-
-angleOut *= Mathf.Deg2Rad;
-
-Vector3 angularVelocity = (angleOut * axisOut) / Time.fixedDeltaTime;
-
-//rotationText.text += "Debug: angularVelocity = " + angularVelocity.ToString("0.00") + "\n" + "\n";
-//rotationText.text += "Debug: axisOut = " + axisOut.ToString("0.00") + "\n" + "\n";
-
-//angularVelocity = (batRotationYDiff) / Time.fixedDeltaTime;
-
-//rotationText.text += "Angular Velocity = " + angularVelocity.ToString("0.00");
-*/
