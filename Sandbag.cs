@@ -14,6 +14,7 @@ public class Sandbag : UdonSharpBehaviour
     public Rigidbody sandbagRB;
     public Slider batWeight;
     public Button respawnSandbagButton;
+    public Button launchSandbagButton;
     public TextMeshProUGUI batActualWeightText;
 
     private Vector3 batVelocity = Vector3.zero;
@@ -32,9 +33,9 @@ public class Sandbag : UdonSharpBehaviour
     //private float batRotationYPrev = 0.0f;
     //private float batRotationYDiff = 0.0f;
 
-    private float m_ass = 1.4f; //mass in kg
-    // I know this isnt proper naming convention but it says ass lol
+    [UdonSynced] private float m_ass; //mass in kg
     // Average baseball bat weighs between 0.96kg to 1.4kg
+
     private float sandbagWeight = 20.0f;
     private Vector3 sandbagStartPos = Vector3.zero;
 
@@ -42,12 +43,17 @@ public class Sandbag : UdonSharpBehaviour
     private float cooldownTime = 1.0f;
     private int timerLatch = 0;
 
-    private Vector3 storedMomentum = Vector3.zero;
+    [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
 
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.name == "Floor")
         {
+            return;
+        }
+        if (collision.collider.name == "Big Floor Test")
+        {
+            sandbagRB.velocity *= (float)0.9;
             return;
         }
 
@@ -57,11 +63,11 @@ public class Sandbag : UdonSharpBehaviour
             collision.collider.enabled = false;
 
             // Set the timerLatch to 1, which will release the sandbag with the stored velocity after 1 second
-            timerLatch = 1;
+            //timerLatch = 1;
 
             // Get the contact normal and multiply it by the linear momentum vector to determine the resultant impulse
-            rotationText.text = "batVelocity = " + batVelocity.ToString() + "\n";
-            rotationText.text += "contact.normal = " + contact.normal.ToString() + "\n";
+            //rotationText.text = "batVelocity = " + batVelocity.ToString() + "\n";
+            //rotationText.text += "contact.normal = " + contact.normal.ToString() + "\n";
 
             // Determine the angle between 2 vectors: the contact normal and the velocity of the bat part
             float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) );
@@ -82,7 +88,7 @@ public class Sandbag : UdonSharpBehaviour
 
             //Vector3 resultantImpulse = contact.normal * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
-            rotationText.text += "resultantImpulse = " + resultantImpulse.ToString();
+            //rotationText.text += "resultantImpulse = " + resultantImpulse.ToString();
 
             //Debug.Log("batVelocity = " + batVelocity.ToString());
             //Debug.Log("contact.normal = " + contact.normal.ToString());
@@ -98,6 +104,11 @@ public class Sandbag : UdonSharpBehaviour
 
     public void RespawnSandbag()
     {
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
+    }
+
+    public void RespawnSandbag_Networked()
+    {
         timerLatch = 2;
         timer = 0.0f;
 
@@ -106,6 +117,17 @@ public class Sandbag : UdonSharpBehaviour
         sandbagRB.position = sandbagStartPos;
     }
 
+    public void LaunchSandbag()
+    {
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
+    }
+
+    public void LaunchSandbag_Networked()
+    {
+        timerLatch = 1;
+        sandbagRB.constraints = RigidbodyConstraints.None;
+        sandbagRB.velocity = storedMomentum;
+    }
 
     void Start()
     {
@@ -117,6 +139,8 @@ public class Sandbag : UdonSharpBehaviour
     {
         m_ass = batWeight.value;
         batActualWeightText.text = m_ass.ToString("0.0") + "kg";
+
+        rotationText.text = storedMomentum.ToString();
 
         //rotationText.text = bat.transform.position.ToString() + "\n" + "\n";
         //rotationText.text += bat.transform.rotation.ToString() + "\n" + "\n";
@@ -140,16 +164,10 @@ public class Sandbag : UdonSharpBehaviour
 
         Vector3 angularVelocity = (angleOut * axisOut) / Time.fixedDeltaTime;
 
+        
         if (timerLatch == 1)
         {
             timer += Time.deltaTime;
-            if (timer > cooldownTime)
-            {
-                sandbagRB.constraints = RigidbodyConstraints.None;
-                sandbagRB.velocity = storedMomentum;
-                //sandbagRB.AddForce(storedMomentum, ForceMode.Force);
-
-            }
             if (timer > cooldownTime + 0.02f)
             {
                 storedMomentum = Vector3.zero;
@@ -175,5 +193,6 @@ public class Sandbag : UdonSharpBehaviour
         {
 
         }
+        
     }
 }
