@@ -33,7 +33,7 @@ public class Sandbag : UdonSharpBehaviour
     //private float batRotationYPrev = 0.0f;
     //private float batRotationYDiff = 0.0f;
 
-    [UdonSynced] private float m_ass; //mass in kg
+    private float m_ass; //mass in kg
     // Average baseball bat weighs between 0.96kg to 1.4kg
 
     private float sandbagWeight = 20.0f;
@@ -172,7 +172,7 @@ public class Sandbag : UdonSharpBehaviour
             {
                 storedMomentum = Vector3.zero;
                 Debug.Log(batParts.Length);
-                for (int i = 0; i < batParts.Length - 1; i++)
+                for (int i = 0; i < batParts.Length; i++)
                 {
                     batParts[i].GetComponent<Collider>().enabled = true;
                 }
