@@ -4,6 +4,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 using TMPro;
+using VRC.Udon.Common;
 
 public class SyncLocalGameTime : UdonSharpBehaviour
 {
@@ -15,46 +16,23 @@ public class SyncLocalGameTime : UdonSharpBehaviour
     [UdonSynced] private float localTime;
     [UdonSynced] private float localTime_TryingToSync;
     private float localTime_actuallyLocal;
-    private float timeOffset;
+    private float timeOffset = 0.0f;
+    private int test = 0;
 
     public TextMeshProUGUI syncStatusDebug;
+    public TextMeshProUGUI syncStatusDebug2;
 
     public void SyncLocalTime()
     {
-        //localTime = Time.realtimeSinceStartup;
-        //RequestSerialization();
+        Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        localTime = Time.realtimeSinceStartup;
+        RequestSerialization();
+        //OnDeserialization();
     }
 
     private void FixedUpdate()
     {
-        // Add to a local timer each Fixed Update.
-        localTime_actuallyLocal += Time.fixedDeltaTime;
-
-        // If we are the Owner of this Game Object (i.e. the Network Master)
-        if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
-        {
-            // Once the local timer is equal to 1 or more
-            if (localTime_actuallyLocal >= 1.0f)
-            {
-                // We are going to try and use two variables to calculate the sync timing
-                // A timer that has tracks how long since we've last sent a serialization request
-                localTime_TryingToSync = localTime_actuallyLocal;
-
-                // A timer that tracks how long since start up
-                localTime = Time.realtimeSinceStartup;
-
-                //RequestSerialization();
-                //OnDeserialization();
-
-                // Reset the timer that tracks how long since last serialization request to 0, ONLY FOR THE INSTANCE MASTER
-                localTime_actuallyLocal = 0.0f;
-            }
-        }
-        else
-        {
-
-        }
-        
+        syncStatusDebug2.text = (Time.realtimeSinceStartup + timeOffset).ToString();
     }
 
     void Start()
@@ -62,30 +40,28 @@ public class SyncLocalGameTime : UdonSharpBehaviour
         
     }
 
-    public override void OnDeserialization()
+    public override void OnDeserialization(DeserializationResult dr)
     {
-        // Then in here, we should be able to use the timer variables we serialized to sync both players
+        syncStatusDebug.text = "time sent by host = " + localTime + "\n";
+        syncStatusDebug.text += "time on local client side = " + Time.realtimeSinceStartup + "\n";
+        syncStatusDebug.text += "dr.sendTime = " + dr.sendTime + "\n";
+        syncStatusDebug.text += "dr.receiveTime = " + dr.receiveTime + "\n";
 
-        syncStatusDebug.text = localTime.ToString() + "\n";
-        syncStatusDebug.text += localTime_TryingToSync.ToString() + "\n";
+        syncStatusDebug.text += "\n";
+        syncStatusDebug.text += "delta between send and realtime = " + (Time.realtimeSinceStartup - dr.sendTime) + "\n";
+        syncStatusDebug.text += "delta between host time and client time = " + (localTime + (Time.realtimeSinceStartup - dr.sendTime)).ToString();
 
-        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
-        {
-            syncStatusDebug.text += "\n";
-            syncStatusDebug.text += localTime_actuallyLocal.ToString();
-        }
-
+        timeOffset = (localTime + (Time.realtimeSinceStartup - dr.sendTime)) - Time.realtimeSinceStartup;
 
         /*
-        syncStatusDebug.text = (localTime + localTime_actuallyLocal).ToString();
-        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
-        {
-            syncStatusDebug.text += "\n";
-            syncStatusDebug.text += localTime_actuallyLocal.ToString();
-        }
-        localTime_actuallyLocal = 0.0f;
+        syncStatusDebug.text = "test " + test.ToString();
+        test += 1;
         */
-        //localTime_actuallyLocal = Time.realtimeSinceStartup;
-        //timeOffset = localTime - localTime_actuallyLocal;
     }
 }
+/*
+syncStatusDebug.text = localTime.ToString() + "\n";
+syncStatusDebug.text += deserializationResult.sendTime.ToString() + "\n";
+syncStatusDebug.text += deserializationResult.receiveTime.ToString() + "\n";
+syncStatusDebug.text += "Serialization was sent " + (Time.realtimeSinceStartup - deserializationResult.sendTime).ToString() + " seconds ago" + "\n";
+*/
