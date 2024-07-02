@@ -51,7 +51,6 @@ public class BatSwing : UdonSharpBehaviour
         hasSwung = true;
 
         // We might also want to make the bat owner (local player) the owner of the Sandbag. This is to test to see if handing the ownership is viable like this
-
         Networking.SetOwner(Networking.LocalPlayer, Sandbag);
     }
 
@@ -86,6 +85,7 @@ public class BatSwing : UdonSharpBehaviour
 
     private void FixedUpdate()
     {
+        /*
         syncStatusDebug.text = "hasSwung = " + hasSwung + "\n";
         for (int i = 0; i < batParts.Length; i++)
         {
@@ -111,5 +111,6 @@ public class BatSwing : UdonSharpBehaviour
             syncStatusDebug.text += "me! :D";
         }
     }
-    
+        */
+    }
 }

@@ -16,6 +16,7 @@ public class Sandbag : UdonSharpBehaviour
     public Button respawnSandbagButton;
     public Button launchSandbagButton;
     public TextMeshProUGUI batActualWeightText;
+    public TextMeshProUGUI distanceTraveledText;
 
     private Vector3 batVelocity = Vector3.zero;
     private Vector3 batPosCurr = Vector3.zero;
@@ -39,11 +40,16 @@ public class Sandbag : UdonSharpBehaviour
     private float sandbagWeight = 20.0f;
     private Vector3 sandbagStartPos = Vector3.zero;
 
+    private Vector3 distanceOffset = Vector3.zero;
+    private float distanceTraveled = 0.0f;
+
     private float timer = 0.0f;
+    private float globalTimer = 0.0f;
     private float cooldownTime = 1.0f;
     private int timerLatch = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
+    [UdonSynced] private bool[] bools = new bool[2];
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -119,7 +125,8 @@ public class Sandbag : UdonSharpBehaviour
 
     public void LaunchSandbag()
     {
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
+        bools[0] = true;
+        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
     }
 
     public void LaunchSandbag_Networked()
@@ -164,7 +171,7 @@ public class Sandbag : UdonSharpBehaviour
 
         Vector3 angularVelocity = (angleOut * axisOut) / Time.fixedDeltaTime;
 
-        
+
         if (timerLatch == 1)
         {
             timer += Time.deltaTime;
@@ -176,8 +183,13 @@ public class Sandbag : UdonSharpBehaviour
                 {
                     batParts[i].GetComponent<Collider>().enabled = true;
                 }
-                timerLatch = 0;
-                timer = 0.0f;
+            }
+            if (timer > 10.0f)
+            {
+                distanceOffset = sandbagRB.position - sandbagStartPos;
+                distanceTraveled = distanceOffset.magnitude;
+                distanceTraveledText.text = distanceTraveled.ToString();
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
             }
         }
         else if (timerLatch == 2)
