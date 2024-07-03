@@ -24,10 +24,14 @@ public class SyncLocalGameTime : UdonSharpBehaviour
 
     public void SyncLocalTime()
     {
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, nameof(SyncLocalTime_Networked));
+    }
+
+    public void SyncLocalTime_Networked()
+    {
         Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
         localTime = Time.realtimeSinceStartup;
         RequestSerialization();
-        //OnDeserialization();
     }
 
     private void FixedUpdate()
