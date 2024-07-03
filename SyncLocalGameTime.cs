@@ -22,21 +22,28 @@ public class SyncLocalGameTime : UdonSharpBehaviour
     public TextMeshProUGUI syncStatusDebug;
     public TextMeshProUGUI syncStatusDebug2;
 
+    public Sandbag sandbag;
+
     public void SyncLocalTime()
     {
+        if (Networking.IsMaster)
+        {
+            syncStatusDebug2.text = "No sync is needed!" + "\n";
+            return;
+        }
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, nameof(SyncLocalTime_Networked));
     }
 
     public void SyncLocalTime_Networked()
     {
-        Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        //Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
         localTime = Time.realtimeSinceStartup;
         RequestSerialization();
     }
 
     private void FixedUpdate()
     {
-        syncStatusDebug2.text = (Time.realtimeSinceStartup + timeOffset).ToString();
+        //syncStatusDebug2.text = (Time.realtimeSinceStartup + timeOffset).ToString();
     }
 
     void Start()
@@ -56,16 +63,6 @@ public class SyncLocalGameTime : UdonSharpBehaviour
         syncStatusDebug.text += "delta between host time and client time = " + (localTime + (Time.realtimeSinceStartup - dr.sendTime)).ToString();
 
         timeOffset = (localTime + (Time.realtimeSinceStartup - dr.sendTime)) - Time.realtimeSinceStartup;
-
-        /*
-        syncStatusDebug.text = "test " + test.ToString();
-        test += 1;
-        */
+        sandbag.SetProgramVariable("timeOffset", timeOffset);
     }
 }
-/*
-syncStatusDebug.text = localTime.ToString() + "\n";
-syncStatusDebug.text += deserializationResult.sendTime.ToString() + "\n";
-syncStatusDebug.text += deserializationResult.receiveTime.ToString() + "\n";
-syncStatusDebug.text += "Serialization was sent " + (Time.realtimeSinceStartup - deserializationResult.sendTime).ToString() + " seconds ago" + "\n";
-*/

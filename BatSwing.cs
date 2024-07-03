@@ -85,32 +85,6 @@ public class BatSwing : UdonSharpBehaviour
 
     private void FixedUpdate()
     {
-        /*
-        syncStatusDebug.text = "hasSwung = " + hasSwung + "\n";
-        for (int i = 0; i < batParts.Length; i++)
-        {
-            syncStatusDebug.text += "batParts[" + i  + "] status = " + batParts[i].GetComponent<Collider>().enabled + "\n";
-            syncStatusDebug.text += "batParts[" + i + "] owner = ";
-            if (Networking.GetOwner(batParts[i]) != Networking.LocalPlayer)
-            {
-                syncStatusDebug.text += "not me :(";
-            }
-            else
-            {
-                syncStatusDebug.text += "me! :D";
-            }
-            syncStatusDebug.text += "\n";
-        }
-        syncStatusDebug.text += "bat Owner = ";
-        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
-        {
-            syncStatusDebug.text += "not me :(";
-        }
-        else
-        {
-            syncStatusDebug.text += "me! :D";
-        }
-    }
-        */
+
     }
 }

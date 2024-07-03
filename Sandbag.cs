@@ -6,6 +6,7 @@ using VRC.Udon;
 using TMPro;
 using UnityEngine.UI;
 using Cysharp.Threading.Tasks.Triggers;
+using System;
 
 public class Sandbag : UdonSharpBehaviour
 {
@@ -17,6 +18,9 @@ public class Sandbag : UdonSharpBehaviour
     public Button launchSandbagButton;
     public TextMeshProUGUI batActualWeightText;
     public TextMeshProUGUI distanceTraveledText;
+
+    public TextMeshProUGUI syncStatusDebug2;
+    public TextMeshProUGUI syncStatusDebug3;
 
     private Vector3 batVelocity = Vector3.zero;
     private Vector3 batPosCurr = Vector3.zero;
@@ -47,6 +51,11 @@ public class Sandbag : UdonSharpBehaviour
     private float globalTimer = 0.0f;
     private float cooldownTime = 1.0f;
     private int timerLatch = 0;
+    private float timeOffset = 0.0f;
+
+    private int currentSecond = 0;
+    private int previousSecond = 0;
+    private int counter = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
     [UdonSynced] private bool[] bools = new bool[2];
@@ -108,6 +117,15 @@ public class Sandbag : UdonSharpBehaviour
     }
 
 
+    public void GetTimeOffset(float passedValue)
+    {
+        Debug.Log("This function has been entered");
+        Debug.Log(passedValue);
+        timeOffset = passedValue;
+        syncStatusDebug2.text = timeOffset.ToString();
+    }
+
+
     public void RespawnSandbag()
     {
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
@@ -129,6 +147,7 @@ public class Sandbag : UdonSharpBehaviour
         //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
     }
 
+
     public void LaunchSandbag_Networked()
     {
         timerLatch = 1;
@@ -140,6 +159,9 @@ public class Sandbag : UdonSharpBehaviour
     {
         sandbagRB = GetComponent<Rigidbody>();
         sandbagStartPos = sandbagRB.position;
+
+        currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup);
+        previousSecond = currentSecond;
     }
 
     private void FixedUpdate()
@@ -206,5 +228,28 @@ public class Sandbag : UdonSharpBehaviour
 
         }
         
+    }
+
+    private void Update()
+    {
+        syncStatusDebug3.text = "bools[0] = " + bools[0].ToString();
+
+        syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
+        syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
+        currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
+        syncStatusDebug2.text += currentSecond.ToString() + "\n";
+        syncStatusDebug2.text += previousSecond.ToString() + "\n";
+        if (currentSecond != previousSecond)
+        {
+            if (bools[0])
+            {
+                LaunchSandbag_Networked();
+                bools[0] = false;
+            }
+            counter++;
+        }
+        syncStatusDebug2.text += counter.ToString() + "\n";
+
+        previousSecond = currentSecond;
     }
 }
