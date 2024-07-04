@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine.UI;
 using Cysharp.Threading.Tasks.Triggers;
 using System;
+using Unity.Mathematics;
 
 public class Sandbag : UdonSharpBehaviour
 {
@@ -59,6 +60,7 @@ public class Sandbag : UdonSharpBehaviour
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
     [UdonSynced] private bool[] bools = new bool[2];
+    private bool[] boolsLocal = new bool[2];
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -77,12 +79,6 @@ public class Sandbag : UdonSharpBehaviour
             // Disable the collider on contact so it does not continue to collide with the sandbag
             collision.collider.enabled = false;
 
-            // Set the timerLatch to 1, which will release the sandbag with the stored velocity after 1 second
-            //timerLatch = 1;
-
-            // Get the contact normal and multiply it by the linear momentum vector to determine the resultant impulse
-            //rotationText.text = "batVelocity = " + batVelocity.ToString() + "\n";
-            //rotationText.text += "contact.normal = " + contact.normal.ToString() + "\n";
 
             // Determine the angle between 2 vectors: the contact normal and the velocity of the bat part
             float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) );
@@ -93,26 +89,12 @@ public class Sandbag : UdonSharpBehaviour
             float bottomOfAngleEquation = (2 * triangleSideA * triangleSideB);
 
             float angleBetweenNormalAndVelocity = Mathf.Acos(topOfAngleEquation / bottomOfAngleEquation);
-            //Debug.Log("angle = " + angleBetweenNormalAndVelocity * (180/Mathf.PI));
-
-            //Vector3 resultantImpulse = Vector3.zero;
 
             resultantImpulse.x = contact.normal.x * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
             resultantImpulse.y = batVelocity.y * Mathf.Cos(angleBetweenNormalAndVelocity);
             resultantImpulse.z = contact.normal.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
-            //Vector3 resultantImpulse = contact.normal * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
-
-            //rotationText.text += "resultantImpulse = " + resultantImpulse.ToString();
-
-            //Debug.Log("batVelocity = " + batVelocity.ToString());
-            //Debug.Log("contact.normal = " + contact.normal.ToString());
-
             storedMomentum += resultantImpulse * (m_ass/ (float)batParts.Length);
-
-            Debug.DrawRay(contact.point, batVelocity, Color.green, 1.0f);
-            Debug.DrawRay(contact.point, resultantImpulse, Color.blue, 1.0f);
-            Debug.DrawRay(contact.point, contact.normal, Color.red, 1.0f);
         }
     }
 
@@ -124,7 +106,6 @@ public class Sandbag : UdonSharpBehaviour
         timeOffset = passedValue;
         syncStatusDebug2.text = timeOffset.ToString();
     }
-
 
     public void RespawnSandbag()
     {
@@ -143,6 +124,7 @@ public class Sandbag : UdonSharpBehaviour
 
     public void LaunchSandbag()
     {
+        globalTimer = -0.2f;
         bools[0] = true;
         //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
     }
@@ -232,24 +214,55 @@ public class Sandbag : UdonSharpBehaviour
 
     private void Update()
     {
+
+
+        if (globalTimer < 1.0f)
+        {
+            globalTimer += Time.deltaTime;
+
+        }
+
+        currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
+
         syncStatusDebug3.text = "bools[0] = " + bools[0].ToString();
+        syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString();
 
         syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
         syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
-        currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
         syncStatusDebug2.text += currentSecond.ToString() + "\n";
         syncStatusDebug2.text += previousSecond.ToString() + "\n";
+
         if (currentSecond != previousSecond)
         {
-            if (bools[0])
+            if (globalTimer < 0.25)
             {
-                LaunchSandbag_Networked();
-                bools[0] = false;
+                //do nothing
+            }
+            else
+            {
+                if (bools[0])
+                {
+                    LaunchSandbag_Networked();
+                    bools[0] = false;
+                }
             }
             counter++;
         }
         syncStatusDebug2.text += counter.ToString() + "\n";
 
         previousSecond = currentSecond;
+    }
+
+    public override void OnDeserialization()
+    {
+        syncStatusDebug3.text += UnityEngine.Random.Range(0, 10).ToString();
+        // If the bools has changed, set the globalTimer variable (may need to change name) to 0
+        // This should make it so that when other players Serialize the value, the timer 
+        if (bools != boolsLocal)
+        {
+            globalTimer = 0.0f;
+        }
+
+        boolsLocal = bools;
     }
 }
