@@ -59,7 +59,9 @@ public class Sandbag : UdonSharpBehaviour
     private int counter = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
-    [UdonSynced] private bool[] bools = new bool[2];
+    //[UdonSynced] private bool[] bools = new bool[2];
+    private bool[] bools = new bool[2];
+    [UdonSynced, FieldChangeCallback(nameof(int_FieldChangeCallbackTest))] private int testingInt = 0;
     private bool[] boolsLocal = new bool[2];
 
     private void OnCollisionEnter(Collision collision)
@@ -124,9 +126,41 @@ public class Sandbag : UdonSharpBehaviour
 
     public void LaunchSandbag()
     {
-        globalTimer = -0.2f;
-        bools[0] = true;
+        // If the player who clicks the Launch Sandbag script does not own the Sandbag, they will not be able to set UdonSynced variables
+        // I am experiencing this issue likely inpart because this script is too loaded
+        // I will need to split this script up accordingly as managing ownership of this script is becoming too tedious
+        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
+        {
+            Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        }
+
+        //globalTimer = -0.2f;
+        //bools[0] = true;
+        // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
+        int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
+        //RequestSerialization();
         //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
+    }
+
+
+    public int int_FieldChangeCallbackTest
+    {
+        set 
+        {
+            Debug.Log("First I am here");
+            if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
+            {
+                globalTimer = -0.5f;
+            }
+            else
+            {
+                globalTimer = 0.0f;
+            }
+            Debug.Log("Finally I am here");
+            testingInt = value;
+            bools[0] = true;
+        }
+        get { return testingInt; }
     }
 
 
@@ -224,8 +258,9 @@ public class Sandbag : UdonSharpBehaviour
 
         currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
 
-        syncStatusDebug3.text = "bools[0] = " + bools[0].ToString();
-        syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString();
+        syncStatusDebug3.text = "bools[0] = " + bools[0].ToString() + "\n";
+        syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString() + "\n";
+        syncStatusDebug3.text += "testingInt = " + testingInt.ToString() + "\n";
 
         syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
         syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
@@ -255,7 +290,7 @@ public class Sandbag : UdonSharpBehaviour
 
     public override void OnDeserialization()
     {
-        syncStatusDebug3.text += UnityEngine.Random.Range(0, 10).ToString();
+        //syncStatusDebug3.text += UnityEngine.Random.Range(0, 10).ToString();
         // If the bools has changed, set the globalTimer variable (may need to change name) to 0
         // This should make it so that when other players Serialize the value, the timer 
         if (bools != boolsLocal)
