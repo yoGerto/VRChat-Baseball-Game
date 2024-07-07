@@ -59,8 +59,7 @@ public class Sandbag : UdonSharpBehaviour
     private int counter = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
-    //[UdonSynced] private bool[] bools = new bool[2];
-    private bool[] bools = new bool[2];
+    [UdonSynced] private bool[] bools = new bool[2];
     [UdonSynced, FieldChangeCallback(nameof(int_FieldChangeCallbackTest))] private int testingInt = 0;
     private bool[] boolsLocal = new bool[2];
 
@@ -111,7 +110,16 @@ public class Sandbag : UdonSharpBehaviour
 
     public void RespawnSandbag()
     {
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
+        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
+        {
+            Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        }
+
+        bools[1] = true;
+        // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
+        int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
+
+        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
     }
 
     public void RespawnSandbag_Networked()
@@ -134,12 +142,9 @@ public class Sandbag : UdonSharpBehaviour
             Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
         }
 
-        //globalTimer = -0.2f;
-        //bools[0] = true;
+        bools[0] = true;
         // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
         int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
-        //RequestSerialization();
-        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LaunchSandbag_Networked");
     }
 
 
@@ -147,7 +152,6 @@ public class Sandbag : UdonSharpBehaviour
     {
         set 
         {
-            Debug.Log("First I am here");
             if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
             {
                 globalTimer = -0.5f;
@@ -156,9 +160,20 @@ public class Sandbag : UdonSharpBehaviour
             {
                 globalTimer = 0.0f;
             }
-            Debug.Log("Finally I am here");
+
             testingInt = value;
-            bools[0] = true;
+
+            for (int i = 0; i < bools.Length; i++)
+            {
+                if (bools[i])
+                {
+                    boolsLocal[i] = true;
+                }
+                else
+                {
+                    boolsLocal[i] = false;
+                }
+            }
         }
         get { return testingInt; }
     }
@@ -248,8 +263,6 @@ public class Sandbag : UdonSharpBehaviour
 
     private void Update()
     {
-
-
         if (globalTimer < 1.0f)
         {
             globalTimer += Time.deltaTime;
@@ -259,6 +272,8 @@ public class Sandbag : UdonSharpBehaviour
         currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
 
         syncStatusDebug3.text = "bools[0] = " + bools[0].ToString() + "\n";
+        syncStatusDebug3.text += "boolsLocal[0] = " + boolsLocal[0].ToString() + "\n";
+
         syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString() + "\n";
         syncStatusDebug3.text += "testingInt = " + testingInt.ToString() + "\n";
 
@@ -275,10 +290,23 @@ public class Sandbag : UdonSharpBehaviour
             }
             else
             {
-                if (bools[0])
+                if (boolsLocal[0])
                 {
                     LaunchSandbag_Networked();
-                    bools[0] = false;
+                    boolsLocal[0] = false;
+                    if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
+                    {
+                        bools[0] = false;
+                    }
+                }
+                if (boolsLocal[1])
+                {
+                    RespawnSandbag_Networked();
+                    boolsLocal[1] = false;
+                    if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
+                    {
+                        bools[1] = false;
+                    }
                 }
             }
             counter++;
@@ -288,16 +316,4 @@ public class Sandbag : UdonSharpBehaviour
         previousSecond = currentSecond;
     }
 
-    public override void OnDeserialization()
-    {
-        //syncStatusDebug3.text += UnityEngine.Random.Range(0, 10).ToString();
-        // If the bools has changed, set the globalTimer variable (may need to change name) to 0
-        // This should make it so that when other players Serialize the value, the timer 
-        if (bools != boolsLocal)
-        {
-            globalTimer = 0.0f;
-        }
-
-        boolsLocal = bools;
-    }
 }
