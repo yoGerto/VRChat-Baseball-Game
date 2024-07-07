@@ -20,6 +20,7 @@ public class BatSwing : UdonSharpBehaviour
     public GameObject BaseballBat;
     public GameObject Sandbag;
     public TextMeshProUGUI syncStatusDebug;
+    public PlayerCamera playerCamera;
 
     private bool hasSwung = false;
 
@@ -71,6 +72,16 @@ public class BatSwing : UdonSharpBehaviour
                 batParts[i].GetComponent<Collider>().enabled = true;
             }
         }
+    }
+
+    public override void OnPickupUseDown()
+    {
+        playerCamera.LockCam();
+    }
+
+    public override void OnPickupUseUp()
+    {
+        playerCamera.LockCam();
     }
 
     public void ClearSwing()
