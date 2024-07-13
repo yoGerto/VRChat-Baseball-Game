@@ -50,10 +50,9 @@ public class PlayerCamera : UdonSharpBehaviour
             
             Vector3 playerPos = player.GetPosition();
 
-            // Teleport the player to their current position, with the rotation which should be what at the start 
-            //player.TeleportTo(playerPos, headRot);
-            player.TeleportTo(playerPos, new Quaternion(0.0f, 0.0f, 0.0f, 0.0f), VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint);
-            //player.TeleportTo(playerPos, glorp.rotation, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint);
+            // Teleport the player to their current position, with the rotation which should be what at the start
+            // Currently bugged as the player's vertical look angle is retained after teleport, may need to reconsider approach as this seems fundamentally unavoidable with the current implementation
+            player.TeleportTo(playerPos, headRot);
 
             cameraTest.enabled = false;
             camActive = false;
@@ -64,8 +63,8 @@ public class PlayerCamera : UdonSharpBehaviour
     {
 
         headTrackingData = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-        debugText.text = "stored headRot = " + headRot.ToString() + "\n";
-        debugText.text += "current headRot = " + headTrackingData.rotation.ToString();
+        //debugText.text = "stored headRot = " + headRot.ToString() + "\n";
+        //debugText.text += "current headRot = " + headTrackingData.rotation.ToString();
         /*
         if (camActive)
         {

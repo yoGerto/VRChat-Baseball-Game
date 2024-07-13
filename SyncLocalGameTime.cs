@@ -41,15 +41,6 @@ public class SyncLocalGameTime : UdonSharpBehaviour
         RequestSerialization();
     }
 
-    private void FixedUpdate()
-    {
-        //syncStatusDebug2.text = (Time.realtimeSinceStartup + timeOffset).ToString();
-    }
-
-    void Start()
-    {
-        
-    }
 
     public override void OnDeserialization(DeserializationResult dr)
     {

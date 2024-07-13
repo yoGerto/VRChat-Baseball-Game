@@ -23,39 +23,25 @@ public class Sandbag : UdonSharpBehaviour
     public TextMeshProUGUI syncStatusDebug2;
     public TextMeshProUGUI syncStatusDebug3;
 
-    private Vector3 batVelocity = Vector3.zero;
-    private Vector3 batPosCurr = Vector3.zero;
-    private Vector3 batPosPrev = Vector3.zero;
+    public BatWeightSlider batWeightSlider;
+
+    private Vector3 batVelocity, batPosCurr, batPosPrev = Vector3.zero;
 
     private Vector3 resultantImpulse = Vector3.zero;
-
-    private Quaternion batRotationCurr = Quaternion.identity;
-    private Quaternion batRotationPrev = Quaternion.identity;
-    private Quaternion batRotationDelta = Quaternion.identity;
-
-    private float linearMomentum;
-
-    //private float batRotationYCurr = 0.0f;
-    //private float batRotationYPrev = 0.0f;
-    //private float batRotationYDiff = 0.0f;
+    private Vector3 sandbagStartPos = Vector3.zero;
+    //private Vector3 distanceOffset = Vector3.zero;
 
     private float m_ass; //mass in kg
     // Average baseball bat weighs between 0.96kg to 1.4kg
 
-    private float sandbagWeight = 20.0f;
-    private Vector3 sandbagStartPos = Vector3.zero;
+    private float timer, globalTimer, timeOffset = 0.0f;
 
-    private Vector3 distanceOffset = Vector3.zero;
-    private float distanceTraveled = 0.0f;
+    private const float cooldownTime = 1.0f;
+    private const float respawnTimeout = 3.0f;
 
-    private float timer = 0.0f;
-    private float globalTimer = 0.0f;
-    private float cooldownTime = 1.0f;
-    private int timerLatch = 0;
-    private float timeOffset = 0.0f;
+    private byte timerLatch = 0;
 
-    private int currentSecond = 0;
-    private int previousSecond = 0;
+    private int currentSecond, previousSecond = 0;
     private int counter = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
@@ -80,7 +66,6 @@ public class Sandbag : UdonSharpBehaviour
             // Disable the collider on contact so it does not continue to collide with the sandbag
             collision.collider.enabled = false;
 
-
             // Determine the angle between 2 vectors: the contact normal and the velocity of the bat part
             float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) );
             float triangleSideB = Mathf.Sqrt( (batVelocity.x * batVelocity.x) + (batVelocity.z * batVelocity.z));
@@ -96,42 +81,9 @@ public class Sandbag : UdonSharpBehaviour
             resultantImpulse.z = contact.normal.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
             storedMomentum += resultantImpulse * (m_ass/ (float)batParts.Length);
+            RequestSerialization();
         }
     }
-
-
-    public void GetTimeOffset(float passedValue)
-    {
-        Debug.Log("This function has been entered");
-        Debug.Log(passedValue);
-        timeOffset = passedValue;
-        syncStatusDebug2.text = timeOffset.ToString();
-    }
-
-    public void RespawnSandbag()
-    {
-        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
-        {
-            Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
-        }
-
-        bools[1] = true;
-        // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
-        int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
-
-        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
-    }
-
-    public void RespawnSandbag_Networked()
-    {
-        timerLatch = 2;
-        timer = 0.0f;
-
-        sandbagRB.velocity = Vector3.zero;
-        sandbagRB.rotation = Quaternion.identity;
-        sandbagRB.position = sandbagStartPos;
-    }
-
     public void LaunchSandbag()
     {
         // If the player who clicks the Launch Sandbag script does not own the Sandbag, they will not be able to set UdonSynced variables
@@ -145,8 +97,37 @@ public class Sandbag : UdonSharpBehaviour
         bools[0] = true;
         // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
         int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
+        RequestSerialization();
+    }
+    public void LaunchSandbag_Networked()
+    {
+        timerLatch = 1;
+        sandbagRB.constraints = RigidbodyConstraints.None;
+        sandbagRB.velocity = storedMomentum;
     }
 
+    public void RespawnSandbag()
+    {
+        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
+        {
+            Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        }
+
+        bools[1] = true;
+        // This should trigger the setter on the int_FieldChangeCallbackTest property and increment the value of the variable it is attached to, even though on this line the value is being set to 0 (Needs testing?)
+        int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
+        RequestSerialization();
+    }
+
+    public void RespawnSandbag_Networked()
+    {
+        timerLatch = 2;
+        timer = 0.0f;
+
+        sandbagRB.velocity = Vector3.zero;
+        sandbagRB.rotation = Quaternion.identity;
+        sandbagRB.position = sandbagStartPos;
+    }
 
     public int int_FieldChangeCallbackTest
     {
@@ -154,7 +135,7 @@ public class Sandbag : UdonSharpBehaviour
         {
             if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
             {
-                globalTimer = -0.5f;
+                globalTimer = -0.25f;
             }
             else
             {
@@ -165,6 +146,7 @@ public class Sandbag : UdonSharpBehaviour
 
             for (int i = 0; i < bools.Length; i++)
             {
+                // Cannot assign bools to boolsLocal because it seems to copy the UdonSynced property into it, which is not desired
                 if (bools[i])
                 {
                     boolsLocal[i] = true;
@@ -178,13 +160,6 @@ public class Sandbag : UdonSharpBehaviour
         get { return testingInt; }
     }
 
-
-    public void LaunchSandbag_Networked()
-    {
-        timerLatch = 1;
-        sandbagRB.constraints = RigidbodyConstraints.None;
-        sandbagRB.velocity = storedMomentum;
-    }
 
     void Start()
     {
@@ -201,29 +176,10 @@ public class Sandbag : UdonSharpBehaviour
         batActualWeightText.text = m_ass.ToString("0.0") + "kg";
 
         rotationText.text = storedMomentum.ToString();
-
-        //rotationText.text = bat.transform.position.ToString() + "\n" + "\n";
-        //rotationText.text += bat.transform.rotation.ToString() + "\n" + "\n";
         
         batPosCurr = batParts[0].transform.position;
         batVelocity = (batPosCurr - batPosPrev) / Time.fixedDeltaTime;
         batPosPrev = batPosCurr;
-
-        linearMomentum = batVelocity.magnitude * m_ass;
-
-        float angleOut;
-        Vector3 axisOut;
-
-        batRotationCurr = batParts[0].transform.rotation;
-        batRotationDelta = batRotationCurr * Quaternion.Inverse(batRotationPrev);
-        batRotationPrev = batRotationCurr;
-
-        batRotationDelta.ToAngleAxis(out angleOut, out axisOut);
-
-        angleOut *= Mathf.Deg2Rad;
-
-        Vector3 angularVelocity = (angleOut * axisOut) / Time.fixedDeltaTime;
-
 
         if (timerLatch == 1)
         {
@@ -231,34 +187,35 @@ public class Sandbag : UdonSharpBehaviour
             if (timer > cooldownTime + 0.02f)
             {
                 storedMomentum = Vector3.zero;
-                Debug.Log(batParts.Length);
                 for (int i = 0; i < batParts.Length; i++)
                 {
                     batParts[i].GetComponent<Collider>().enabled = true;
                 }
             }
-            if (timer > 10.0f)
+            if (timer >= respawnTimeout)
             {
-                distanceOffset = sandbagRB.position - sandbagStartPos;
+                Vector2 distanceOffset = Vector2.zero;
+                float distanceTraveled = 0.0f;
+                distanceOffset[0] = sandbagRB.position.x - sandbagStartPos.x;
+                distanceOffset[1] = sandbagRB.position.z - sandbagStartPos.z;
                 distanceTraveled = distanceOffset.magnitude;
+
                 distanceTraveledText.text = distanceTraveled.ToString();
+
+                batWeightSlider.SetProgramVariable("moneyFromOutside", distanceTraveled);
+
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RespawnSandbag_Networked");
             }
         }
         else if (timerLatch == 2)
         {
             timer += Time.deltaTime;
-            if (timer > 0.5)
+            if (timer > 0.1f)
             {
                 sandbagRB.constraints = RigidbodyConstraints.FreezeAll;
                 timer = 0.0f;
             }
         }
-        else
-        {
-
-        }
-        
     }
 
     private void Update()
@@ -280,15 +237,11 @@ public class Sandbag : UdonSharpBehaviour
         syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
         syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
         syncStatusDebug2.text += currentSecond.ToString() + "\n";
-        syncStatusDebug2.text += previousSecond.ToString() + "\n";
+        //syncStatusDebug2.text += previousSecond.ToString() + "\n";
 
         if (currentSecond != previousSecond)
         {
-            if (globalTimer < 0.25)
-            {
-                //do nothing
-            }
-            else
+            if (globalTimer > 0.25)
             {
                 if (boolsLocal[0])
                 {
@@ -310,8 +263,9 @@ public class Sandbag : UdonSharpBehaviour
                 }
             }
             counter++;
+            RequestSerialization();
         }
-        syncStatusDebug2.text += counter.ToString() + "\n";
+        //syncStatusDebug2.text += counter.ToString() + "\n";
 
         previousSecond = currentSecond;
     }
