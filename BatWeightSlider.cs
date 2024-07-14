@@ -10,6 +10,7 @@ public class BatWeightSlider : UdonSharpBehaviour
 {
     public TextMeshProUGUI costOfUpgrade;
     public TextMeshProUGUI debug;
+    public Sandbag sandbag;
     VRCPlayerApi player;
     Slider weightSlider;
     [UdonSynced] private float weightSliderValue;
@@ -17,6 +18,7 @@ public class BatWeightSlider : UdonSharpBehaviour
     [UdonSynced, FieldChangeCallback(nameof(moneyCallback))] private float moneyFromOutside = 10.0f;
     [UdonSynced] private float moneyFromInside = 10.0f;
     [UdonSynced] private float upgradeCost = 10.0f;
+    [UdonSynced] private float explosiveUpgradeCost = 500.0f;
     private bool didIChangeTheValue = false;
 
     void Start()
@@ -30,17 +32,27 @@ public class BatWeightSlider : UdonSharpBehaviour
         if (moneyFromInside >= upgradeCost)
         {
             weightSlider.value += 0.1f;
-            //moneyFromOutside -= upgradeCost;
             moneyFromInside -= upgradeCost;
-            //moneyCallback = upgradeCost * -1;
             upgradeCost++;
-            //UpdateCostOfUpgradeText();
         }
     }
 
     public void WeightDecrease()
     {
         weightSlider.value -= 0.1f;
+    }
+
+    public void ExplosiveChargeUpgrade()
+    {
+        Networking.SetOwner(player, this.gameObject);
+
+        if (moneyFromInside >= explosiveUpgradeCost)
+        {
+            moneyFromInside -= explosiveUpgradeCost;
+            explosiveUpgradeCost *= 2.5f;
+            sandbag.SetProgramVariable("explosiveCharges", 1);
+            RequestSerialization();
+        }
     }
 
     public void UpdateCostOfUpgradeText()
@@ -58,7 +70,6 @@ public class BatWeightSlider : UdonSharpBehaviour
             }
             // using += for setting money value does not seem to work for Serialization
             // So we will need to do the maths inside of here and then serialize the value to other players
-            //moneyFromOutside = value + moneyFromOutside;
             float temp = moneyFromInside + value;
             moneyFromInside = temp;
             RequestSerialization();

@@ -19,6 +19,8 @@ public class Sandbag : UdonSharpBehaviour
     public Button launchSandbagButton;
     public TextMeshProUGUI batActualWeightText;
     public TextMeshProUGUI distanceTraveledText;
+    public TextMeshProUGUI explosiveChargesText;
+    public TextMeshProUGUI explosiveChargesText_RemainingCharges;
 
     public TextMeshProUGUI syncStatusDebug2;
     public TextMeshProUGUI syncStatusDebug3;
@@ -37,17 +39,19 @@ public class Sandbag : UdonSharpBehaviour
     private float timer, globalTimer, timeOffset = 0.0f;
 
     private const float cooldownTime = 1.0f;
-    private const float respawnTimeout = 3.0f;
+    private const float respawnTimeout = 10.0f;
 
     private byte timerLatch = 0;
 
     private int currentSecond, previousSecond = 0;
-    private int counter = 0;
+    [UdonSynced, FieldChangeCallback(nameof(ExplosiveChargeExternalHandler))]private int explosiveCharges = 0;
+    [UdonSynced] private int explosiveChargesLocal_totalPurchased = 0;
+    [UdonSynced] private int explosiveChargesLocal_remainingAvailable = 0;
 
     [UdonSynced] private Vector3 storedMomentum = Vector3.zero;
-    [UdonSynced] private bool[] bools = new bool[2];
+    [UdonSynced] private bool[] bools = new bool[3];
     [UdonSynced, FieldChangeCallback(nameof(int_FieldChangeCallbackTest))] private int testingInt = 0;
-    private bool[] boolsLocal = new bool[2];
+    private bool[] boolsLocal = new bool[3];
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -124,9 +128,42 @@ public class Sandbag : UdonSharpBehaviour
         timerLatch = 2;
         timer = 0.0f;
 
+        if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
+        {
+            explosiveChargesLocal_remainingAvailable = explosiveChargesLocal_totalPurchased;
+            RequestSerialization();
+            OnDeserialization();
+        }
+
         sandbagRB.velocity = Vector3.zero;
         sandbagRB.rotation = Quaternion.identity;
         sandbagRB.position = sandbagStartPos;
+    }
+
+    public void UseExplosive()
+    {
+        if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
+        {
+            Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
+        }
+
+        if (explosiveChargesLocal_remainingAvailable > 0)
+        {
+            bools[2] = true;
+            explosiveChargesLocal_remainingAvailable -= 1;
+            int_FieldChangeCallbackTest = int_FieldChangeCallbackTest + 1;
+            RequestSerialization();
+        }
+
+    }
+
+    public void UseExplosive_Networked()
+    {
+        Vector3 currentVelocity = sandbagRB.velocity;
+        currentVelocity.y += 30.0f;
+        sandbagRB.velocity = currentVelocity;
+
+        UpdateExplosiveUpgradeText();
     }
 
     public int int_FieldChangeCallbackTest
@@ -160,6 +197,23 @@ public class Sandbag : UdonSharpBehaviour
         get { return testingInt; }
     }
 
+    public int ExplosiveChargeExternalHandler
+    {
+        set 
+        {
+            if (Networking.GetOwner(this.gameObject) != Networking.LocalPlayer)
+            {
+                return;
+            }
+
+            int temp = explosiveChargesLocal_totalPurchased + value;
+            explosiveChargesLocal_totalPurchased = temp;
+            explosiveChargesLocal_remainingAvailable = temp;
+            RequestSerialization();
+            OnDeserialization();
+        }
+        get { return explosiveCharges; }
+    }
 
     void Start()
     {
@@ -237,6 +291,7 @@ public class Sandbag : UdonSharpBehaviour
         syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
         syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
         syncStatusDebug2.text += currentSecond.ToString() + "\n";
+        //syncStatusDebug2.text += explosiveChargesLocal.ToString() + "\n";
         //syncStatusDebug2.text += previousSecond.ToString() + "\n";
 
         if (currentSecond != previousSecond)
@@ -260,14 +315,34 @@ public class Sandbag : UdonSharpBehaviour
                     {
                         bools[1] = false;
                     }
+                    //UpdateExplosiveUpgradeText();
+                }
+                if (boolsLocal[2])
+                {
+                    UseExplosive_Networked();
+                    boolsLocal[2] = false;
+                    if (Networking.GetOwner(this.gameObject) == Networking.LocalPlayer)
+                    {
+                        bools[2] = false;
+                    }
                 }
             }
-            counter++;
             RequestSerialization();
         }
-        //syncStatusDebug2.text += counter.ToString() + "\n";
 
         previousSecond = currentSecond;
+    }
+
+    
+    public override void OnDeserialization()
+    {
+        UpdateExplosiveUpgradeText();
+    }
+
+    public void UpdateExplosiveUpgradeText()
+    {
+        explosiveChargesText.text = explosiveChargesLocal_totalPurchased.ToString();
+        explosiveChargesText_RemainingCharges.text = explosiveChargesLocal_remainingAvailable.ToString();
     }
 
 }
