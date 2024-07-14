@@ -44,6 +44,8 @@ public class Sandbag : UdonSharpBehaviour
     private byte timerLatch = 0;
 
     private int currentSecond, previousSecond = 0;
+    private int critChance = 50;
+
     [UdonSynced, FieldChangeCallback(nameof(ExplosiveChargeExternalHandler))]private int explosiveCharges = 0;
     [UdonSynced] private int explosiveChargesLocal_totalPurchased = 0;
     [UdonSynced] private int explosiveChargesLocal_remainingAvailable = 0;
@@ -84,7 +86,29 @@ public class Sandbag : UdonSharpBehaviour
             resultantImpulse.y = batVelocity.y * Mathf.Cos(angleBetweenNormalAndVelocity);
             resultantImpulse.z = contact.normal.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
-            storedMomentum += resultantImpulse * (m_ass/ (float)batParts.Length);
+            int critRoll = UnityEngine.Random.Range(1, 101);
+
+            if (critRoll <= critChance)
+            {
+                storedMomentum += (resultantImpulse * (m_ass / (float)batParts.Length)) * 2;
+            }
+            else
+            {
+                storedMomentum += resultantImpulse * (m_ass/ (float)batParts.Length);
+            }
+
+            rotationText.text = storedMomentum.ToString() + "\n";
+            rotationText.text += "Crit chance = " + critChance + "\n";
+            rotationText.text += "Did Crit roll? ";
+            if (critRoll <= critChance)
+            {
+                rotationText.text += "YES!";
+            }
+            else
+            {
+                rotationText.text += "no :(";
+            }
+
             RequestSerialization();
         }
     }
@@ -228,8 +252,6 @@ public class Sandbag : UdonSharpBehaviour
     {
         m_ass = batWeight.value;
         batActualWeightText.text = m_ass.ToString("0.0") + "kg";
-
-        rotationText.text = storedMomentum.ToString();
         
         batPosCurr = batParts[0].transform.position;
         batVelocity = (batPosCurr - batPosPrev) / Time.fixedDeltaTime;
