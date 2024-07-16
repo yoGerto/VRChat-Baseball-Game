@@ -13,6 +13,7 @@ using UnityEngine.InputSystem.Controls;
 public class Sandbag : UdonSharpBehaviour
 {
     public GameObject[] batParts;
+    public GameObject baseballBat;
     public TextMeshProUGUI rotationText;
     public Rigidbody sandbagRB;
     public Rigidbody batGhostRB;
@@ -30,7 +31,7 @@ public class Sandbag : UdonSharpBehaviour
     public BatWeightSlider batWeightSlider;
     public BatFollower batFollower;
 
-    private Vector3 batVelocity, batPosCurr, batPosPrev = Vector3.zero;
+    private Vector3[] batVelocity, batPosCurr, batPosPrev;
 
     private Vector3 resultantImpulse = Vector3.zero;
     private Vector3 sandbagStartPos = Vector3.zero;
@@ -80,8 +81,8 @@ public class Sandbag : UdonSharpBehaviour
 
             // Determine the angle between 2 vectors: the contact normal and the velocity of the bat part
             float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) );
-            float triangleSideB = Mathf.Sqrt( (batVelocity.x * batVelocity.x) + (batVelocity.z * batVelocity.z));
-            float triangleSideC = Mathf.Sqrt( (Mathf.Pow((batVelocity.x - contact.normal.x), 2)) + (Mathf.Pow((batVelocity.z - contact.normal.z), 2)) );
+            float triangleSideB = Mathf.Sqrt( (batVelocity[0].x * batVelocity[0].x) + (batVelocity[0].z * batVelocity[0].z));
+            float triangleSideC = Mathf.Sqrt( (Mathf.Pow((batVelocity[0].x - contact.normal.x), 2)) + (Mathf.Pow((batVelocity[0].z - contact.normal.z), 2)) );
 
             float topOfAngleEquation = (triangleSideA * triangleSideA) + (triangleSideB * triangleSideB) - (triangleSideC * triangleSideC);
             float bottomOfAngleEquation = (2 * triangleSideA * triangleSideB);
@@ -89,7 +90,7 @@ public class Sandbag : UdonSharpBehaviour
             float angleBetweenNormalAndVelocity = Mathf.Acos(topOfAngleEquation / bottomOfAngleEquation);
 
             resultantImpulse.x = contact.normal.x * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
-            resultantImpulse.y = batVelocity.y * Mathf.Cos(angleBetweenNormalAndVelocity);
+            resultantImpulse.y = batVelocity[0].y * Mathf.Cos(angleBetweenNormalAndVelocity);
             resultantImpulse.z = contact.normal.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
             //Debug.DrawRay(contact.normal, resultantImpulse, Color.green, 1.0f);
@@ -255,6 +256,10 @@ public class Sandbag : UdonSharpBehaviour
 
     void Start()
     {
+        batPosCurr = new Vector3[batParts.Length];
+        batPosPrev = new Vector3[batParts.Length];
+        batVelocity = new Vector3[batParts.Length];
+
         sandbagRB = GetComponent<Rigidbody>();
         sandbagStartPos = sandbagRB.position;
 
@@ -270,52 +275,48 @@ public class Sandbag : UdonSharpBehaviour
         // The mask we created previously needs to be flipped so everything other than the layers we defined ealier recieves collisions from the RayCast
         layerMask = ~layerMask;
 
-
         m_ass = batWeight.value;
         batActualWeightText.text = m_ass.ToString("0.0") + "kg";
 
-
-        batPosCurr = batParts[0].transform.position;
-        float geg = (batParts[0].transform.position - batPosPrev).magnitude;
-
-
-        RaycastHit hit;
-        //Debug.DrawRay(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward), Color.green);
-        //Debug.DrawRay(batParts[0].transform.position, (batParts[0].transform.position - batPosPrev) * 50, Color.red);
-
-        //Debug.Log(batParts[0].transform.TransformDirection(Vector3.forward));
-        rotationText.text = batParts[0].transform.position.ToString() + "\n";
-        rotationText.text += batParts[0].transform.TransformDirection(Vector3.forward).ToString() + "\n";
-        rotationText.text += (batParts[0].transform.position - batPosPrev).ToString() + "\n";
-        /*
-        if (Physics.Raycast(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward), out hit, geg, layerMask))
+        // I want to put this here to hopefully catch any case where these two array lengths are different
+        if (batParts.Length != batPosCurr.Length)
         {
-            Debug.DrawRay(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward) * hit.distance, Color.red);
+            Debug.LogError("batParts and batPosCurr are of different length! Program will crash");
         }
-        */
+
+        RaycastHit hit0;
         
-        //if (Physics.Raycast(batParts[0].transform.position, (batParts[0].transform.position - batPosPrev), out hit, geg, layerMask))
-        if (Physics.Raycast(batPosPrev, (batParts[0].transform.position - batPosPrev), out hit, geg, layerMask))
-        {
+        //batPosCurr[0] = batParts[0].transform.position;
+        batPosCurr[0] = baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position;
 
-            //Debug.DrawLine(batPosPrev, batPosCurr, Color.red, 1.0f);
-            Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
-            //Debug.Log(hit.collider.name);
-            
-        }
-        else
+        //Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.position);
+        Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position);
+        //Debug.Log("Child 1 pos = " + baseballBat.transform.GetChild(1).transform.position);
+
+        if (Physics.Raycast(batPosPrev[0], (batPosCurr[0] - batPosPrev[0]), out hit0, (batPosCurr[0] - batPosPrev[0]).magnitude, layerMask))
         {
-            //Debug.DrawLine(batPosCurr, batPosPrev, Color.green, 0.25f);
+            Debug.DrawRay(hit0.point, hit0.normal, Color.blue, 1.0f);
+            Debug.Log("in hit0");
+            Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position);
         }
+
+        batVelocity[0] = (batPosCurr[0] - batPosPrev[0]) / Time.fixedDeltaTime;
+        batPosPrev[0] = batPosCurr[0];
+
         
+        RaycastHit hit1;
 
-        //Debug.DrawLine(batPosPrev, batPosCurr, Color.blue, 0.25f);
-        //Debug.DrawLine(batPosCurr, batPosPrev, Color.blue, 0.25f);
-        //Debug.DrawRay(batPosPrev, batPosCurr, Color.red);
+        batPosCurr[1] = baseballBat.transform.GetChild(0).transform.GetChild(1).transform.position;
 
-        batVelocity = (batPosCurr - batPosPrev) / Time.fixedDeltaTime;
-        batPosPrev = batPosCurr;
+        if (Physics.Raycast(batPosPrev[1], (batPosCurr[1] - batPosPrev[1]), out hit1, (batPosCurr[1] - batPosPrev[1]).magnitude, layerMask))
+        {
+            Debug.DrawRay(hit1.point, hit1.normal, Color.blue, 1.0f);
+            Debug.Log("in hit1");
+            Debug.Log("Child 1 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(1).transform.position);
+        }
 
+        batVelocity[1] = (batPosCurr[1] - batPosPrev[1]) / Time.fixedDeltaTime;
+        batPosPrev[1] = batPosCurr[1];
 
         if (timerLatch == 1)
         {
