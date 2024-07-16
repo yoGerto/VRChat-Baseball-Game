@@ -8,10 +8,17 @@ using Unity.Mathematics;
 
 public class PlayerCamera : UdonSharpBehaviour
 {
+    public GameObject sandbag;
+    public GameObject bat;
+
     private Camera cameraTest;
-    private Transform cameraTest_Transform;
     private VRCPlayerApi player;
     private bool camActive = false;
+    private bool buttonHeld = false;
+    private bool buttonHeldPrevious = false;
+    private bool startCounting = false;
+    private bool thirdPersonMode = false;
+    private float timer = 0.0f;
 
     VRCPlayerApi.TrackingData headTrackingData;
     Quaternion headRot;
@@ -22,56 +29,60 @@ public class PlayerCamera : UdonSharpBehaviour
     void Start()
     {
         cameraTest = this.GetComponent<Camera>();
-        cameraTest_Transform = this.transform;
         player = Networking.LocalPlayer;
     }
 
     public void LockCam()
     {
-        if (!camActive)
-        {
-            // Populate the headTrackingData with the head's pos and rotation
-            headTrackingData = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-
-            // Store the initial rotation in a variable for later as we want to return the player to this rotation later
-            headRot = headTrackingData.rotation;
-
-            // Set the camera Transform to the position and rotation at the moment OnPickupUseDown is called
-            cameraTest_Transform.SetLocalPositionAndRotation(headTrackingData.position, headRot);
-
-            // Store how far the camera is off of the ground when this is called
-            cameraHeightOffset = headTrackingData.position - player.GetPosition();
-
-            cameraTest.enabled = true;
-            camActive = true;
-        }
-        else
-        {
-            
-            Vector3 playerPos = player.GetPosition();
-
-            // Teleport the player to their current position, with the rotation which should be what at the start
-            // Currently bugged as the player's vertical look angle is retained after teleport, may need to reconsider approach as this seems fundamentally unavoidable with the current implementation
-            player.TeleportTo(playerPos, headRot);
-
-            cameraTest.enabled = false;
-            camActive = false;
-        }     
+        // When OnPickupUseDown is sent, buttonHeld becomes true
+        // Then when OnPickupUseUp is sent, buttonHeld becomes false
+        buttonHeld = !buttonHeld;
     }
 
     public void Update()
     {
-
-        headTrackingData = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-        //debugText.text = "stored headRot = " + headRot.ToString() + "\n";
-        //debugText.text += "current headRot = " + headTrackingData.rotation.ToString();
-        /*
-        if (camActive)
+        if (buttonHeld != buttonHeldPrevious)
         {
-            headTrackingData = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-            //Vector3 playerPos = player.GetPosition();
-            cameraTest_Transform.SetLocalPositionAndRotation(headTrackingData.position, headRot);
+            if (buttonHeld)
+            {
+                startCounting = true;
+            }
+            else
+            {
+                if (timer < 0.5f)
+                {
+                    // Toggle Third Person
+                    thirdPersonMode = !thirdPersonMode;
+                    //camActive = !camActive;
+                    //cameraTest.enabled = camActive;
+                }
+                else
+                {
+
+                }
+                startCounting = false;
+                timer = 0.0f;
+            }
         }
-        */
+
+        if (startCounting)
+        {
+            timer += Time.deltaTime;
+            if (timer > 0.5f)
+            {
+                // Lock Camera In Place
+            }
+        }
+
+        if (thirdPersonMode)
+        {
+            Vector3 posDiff = bat.transform.position - sandbag.transform.position;
+            Debug.DrawRay(sandbag.transform.position, posDiff, Color.yellow, 1.0f);
+            cameraTest.transform.position = posDiff;
+            // calculate difference between bat pos and sandbag pos
+            // then normalize this difference to get a vector of length 1, and then add this to the difference to get a third person pov
+        }
+
+        buttonHeldPrevious = buttonHeld;
     }
 }

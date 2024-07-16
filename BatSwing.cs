@@ -24,9 +24,13 @@ public class BatSwing : UdonSharpBehaviour
 
     private bool hasSwung = false;
 
+    Rigidbody batRB;
+    float timer = 0.0f;
+    bool freezeTimer = false;
+
     void Start()
     {
-        
+        batRB = GetComponent<Rigidbody>();
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -46,6 +50,7 @@ public class BatSwing : UdonSharpBehaviour
         {
             return;
         }
+
 
         // If we are here that means that the collision is between a BatPart and the Sandbag
         // So we want to keep a record of that.
@@ -94,8 +99,17 @@ public class BatSwing : UdonSharpBehaviour
         hasSwung = false;
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
-
+        if (freezeTimer)
+        {
+            timer += Time.deltaTime;
+            if (timer > 0.25f)
+            {
+                timer = 0.0f;
+                freezeTimer = false;
+                batRB.constraints = RigidbodyConstraints.None;
+            }
+        }
     }
 }

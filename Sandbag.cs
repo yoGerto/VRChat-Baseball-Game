@@ -8,12 +8,14 @@ using UnityEngine.UI;
 using Cysharp.Threading.Tasks.Triggers;
 using System;
 using Unity.Mathematics;
+using UnityEngine.InputSystem.Controls;
 
 public class Sandbag : UdonSharpBehaviour
 {
     public GameObject[] batParts;
     public TextMeshProUGUI rotationText;
     public Rigidbody sandbagRB;
+    public Rigidbody batGhostRB;
     public Slider batWeight;
     public Button respawnSandbagButton;
     public Button launchSandbagButton;
@@ -26,6 +28,7 @@ public class Sandbag : UdonSharpBehaviour
     public TextMeshProUGUI syncStatusDebug3;
 
     public BatWeightSlider batWeightSlider;
+    public BatFollower batFollower;
 
     private Vector3 batVelocity, batPosCurr, batPosPrev = Vector3.zero;
 
@@ -45,6 +48,9 @@ public class Sandbag : UdonSharpBehaviour
 
     private int currentSecond, previousSecond = 0;
     private int critChance = 50;
+
+    private bool freezeBatGhost;
+    private float freezeTimer;
 
     [UdonSynced, FieldChangeCallback(nameof(ExplosiveChargeExternalHandler))]private int explosiveCharges = 0;
     [UdonSynced] private int explosiveChargesLocal_totalPurchased = 0;
@@ -70,7 +76,7 @@ public class Sandbag : UdonSharpBehaviour
         foreach (ContactPoint contact in collision.contacts)
         {
             // Disable the collider on contact so it does not continue to collide with the sandbag
-            collision.collider.enabled = false;
+            //collision.collider.enabled = false;
 
             // Determine the angle between 2 vectors: the contact normal and the velocity of the bat part
             float triangleSideA = Mathf.Sqrt( (contact.normal.x * contact.normal.x) + (contact.normal.z * contact.normal.z) );
@@ -85,6 +91,10 @@ public class Sandbag : UdonSharpBehaviour
             resultantImpulse.x = contact.normal.x * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
             resultantImpulse.y = batVelocity.y * Mathf.Cos(angleBetweenNormalAndVelocity);
             resultantImpulse.z = contact.normal.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
+
+            //Debug.DrawRay(contact.normal, resultantImpulse, Color.green, 1.0f);
+            //Debug.DrawRay(this.transform.position - contact.normal, contact.normal, Color.blue, 1.0f);
+            //Debug.Log(contact.normal);
 
             int critRoll = UnityEngine.Random.Range(1, 101);
 
@@ -108,6 +118,10 @@ public class Sandbag : UdonSharpBehaviour
             {
                 rotationText.text += "no :(";
             }
+
+            //batGhostRB.constraints = RigidbodyConstraints.FreezeAll;
+            //batFollower.SetProgramVariable("lockBat", true);
+            //freezeBatGhost = true;
 
             RequestSerialization();
         }
@@ -207,7 +221,7 @@ public class Sandbag : UdonSharpBehaviour
 
             for (int i = 0; i < bools.Length; i++)
             {
-                // Cannot assign bools to boolsLocal because it seems to copy the UdonSynced property into it, which is not desired
+                // Cannot assign bools to boolsLocal directly because it seems to copy the UdonSynced property into it, which is not desired
                 if (bools[i])
                 {
                     boolsLocal[i] = true;
@@ -250,12 +264,58 @@ public class Sandbag : UdonSharpBehaviour
 
     private void FixedUpdate()
     {
+        // Create a bit mask that disables RayCast collisions with layer 22 (BatPartCollider) and layer 13 (Pickup)
+        int layerMask = (1 << 22) + (1 << 13);
+
+        // The mask we created previously needs to be flipped so everything other than the layers we defined ealier recieves collisions from the RayCast
+        layerMask = ~layerMask;
+
+
         m_ass = batWeight.value;
         batActualWeightText.text = m_ass.ToString("0.0") + "kg";
-        
+
+
         batPosCurr = batParts[0].transform.position;
+        float geg = (batParts[0].transform.position - batPosPrev).magnitude;
+
+
+        RaycastHit hit;
+        //Debug.DrawRay(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward), Color.green);
+        //Debug.DrawRay(batParts[0].transform.position, (batParts[0].transform.position - batPosPrev) * 50, Color.red);
+
+        //Debug.Log(batParts[0].transform.TransformDirection(Vector3.forward));
+        rotationText.text = batParts[0].transform.position.ToString() + "\n";
+        rotationText.text += batParts[0].transform.TransformDirection(Vector3.forward).ToString() + "\n";
+        rotationText.text += (batParts[0].transform.position - batPosPrev).ToString() + "\n";
+        /*
+        if (Physics.Raycast(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward), out hit, geg, layerMask))
+        {
+            Debug.DrawRay(batParts[0].transform.position, batParts[0].transform.TransformDirection(Vector3.forward) * hit.distance, Color.red);
+        }
+        */
+        
+        //if (Physics.Raycast(batParts[0].transform.position, (batParts[0].transform.position - batPosPrev), out hit, geg, layerMask))
+        if (Physics.Raycast(batPosPrev, (batParts[0].transform.position - batPosPrev), out hit, geg, layerMask))
+        {
+
+            //Debug.DrawLine(batPosPrev, batPosCurr, Color.red, 1.0f);
+            Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
+            //Debug.Log(hit.collider.name);
+            
+        }
+        else
+        {
+            //Debug.DrawLine(batPosCurr, batPosPrev, Color.green, 0.25f);
+        }
+        
+
+        //Debug.DrawLine(batPosPrev, batPosCurr, Color.blue, 0.25f);
+        //Debug.DrawLine(batPosCurr, batPosPrev, Color.blue, 0.25f);
+        //Debug.DrawRay(batPosPrev, batPosCurr, Color.red);
+
         batVelocity = (batPosCurr - batPosPrev) / Time.fixedDeltaTime;
         batPosPrev = batPosCurr;
+
 
         if (timerLatch == 1)
         {
@@ -300,6 +360,18 @@ public class Sandbag : UdonSharpBehaviour
         {
             globalTimer += Time.deltaTime;
 
+        }
+
+        if (freezeBatGhost)
+        {
+            freezeTimer += Time.deltaTime;
+            if (freezeTimer > 0.5)
+            {
+                //batGhostRB.constraints = RigidbodyConstraints.None;
+                batFollower.SetProgramVariable("lockBat", false);
+                freezeTimer = 0.0f;
+                freezeBatGhost = false;
+            }
         }
 
         currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
