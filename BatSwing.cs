@@ -63,6 +63,7 @@ public class BatSwing : UdonSharpBehaviour
     
     public override void OnPickup()
     {
+        /*
         if (hasSwung)
         {
             for (int i = 0; i < batParts.Length; i++)
@@ -77,6 +78,7 @@ public class BatSwing : UdonSharpBehaviour
                 batParts[i].GetComponent<Collider>().enabled = true;
             }
         }
+        */
     }
 
     public override void OnPickupUseDown()

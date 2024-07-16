@@ -284,39 +284,24 @@ public class Sandbag : UdonSharpBehaviour
             Debug.LogError("batParts and batPosCurr are of different length! Program will crash");
         }
 
-        RaycastHit hit0;
+        RaycastHit hit;
         
-        //batPosCurr[0] = batParts[0].transform.position;
-        batPosCurr[0] = baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position;
-
-        //Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.position);
-        Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position);
-        //Debug.Log("Child 1 pos = " + baseballBat.transform.GetChild(1).transform.position);
-
-        if (Physics.Raycast(batPosPrev[0], (batPosCurr[0] - batPosPrev[0]), out hit0, (batPosCurr[0] - batPosPrev[0]).magnitude, layerMask))
+        for (int i = 0; i < batParts.Length; i++)
         {
-            Debug.DrawRay(hit0.point, hit0.normal, Color.blue, 1.0f);
-            Debug.Log("in hit0");
-            Debug.Log("Child 0 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(0).transform.position);
+            batPosCurr[i] = baseballBat.transform.GetChild(0).transform.GetChild(i).transform.position;
+            if (Physics.Raycast(batPosPrev[i], (batPosCurr[i] - batPosPrev[i]), out hit, (batPosCurr[i] - batPosPrev[i]).magnitude, layerMask))
+            {
+                Vector3 hitNormalStorage = hit.normal;
+                hitNormalStorage.x = hitNormalStorage.x * -1;
+                hitNormalStorage.z = hitNormalStorage.z * -1;
+                Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
+                Debug.DrawRay(hit.point, hit.normal * -1, Color.red, 1.0f);
+                Debug.Log("in hit " + i);
+                Debug.Log("Child " + i + "pos = " + batPosCurr[i]);
+            }
+            batVelocity[i] = (batPosCurr[i] - batPosPrev[i]) / Time.fixedDeltaTime;
+            batPosPrev[i] = batPosCurr[i];
         }
-
-        batVelocity[0] = (batPosCurr[0] - batPosPrev[0]) / Time.fixedDeltaTime;
-        batPosPrev[0] = batPosCurr[0];
-
-        
-        RaycastHit hit1;
-
-        batPosCurr[1] = baseballBat.transform.GetChild(0).transform.GetChild(1).transform.position;
-
-        if (Physics.Raycast(batPosPrev[1], (batPosCurr[1] - batPosPrev[1]), out hit1, (batPosCurr[1] - batPosPrev[1]).magnitude, layerMask))
-        {
-            Debug.DrawRay(hit1.point, hit1.normal, Color.blue, 1.0f);
-            Debug.Log("in hit1");
-            Debug.Log("Child 1 pos = " + baseballBat.transform.GetChild(0).transform.GetChild(1).transform.position);
-        }
-
-        batVelocity[1] = (batPosCurr[1] - batPosPrev[1]) / Time.fixedDeltaTime;
-        batPosPrev[1] = batPosCurr[1];
 
         if (timerLatch == 1)
         {
