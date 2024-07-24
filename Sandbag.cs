@@ -279,20 +279,48 @@ public class Sandbag : UdonSharpBehaviour
                     {
                         if (yetAnotherBool == false)
                         {
+                            baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeAll;
                             batShakeScript.SetProgramVariable("start", true);
                             yetAnotherBool = true;
-                            Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
-                            Debug.DrawRay(hit.point, hit.normal * -1, Color.red, 1.0f);
-                            Debug.DrawRay(hit.point, batVelocity[i], Color.green, 1.0f);
-                            Debug.Log("hit.point = " + hit.point);
-                            Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
+                            Debug.DrawLine(batPosPrev[i], batPosCurr[i], Color.red, 1.0f);
+                            //Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
+                            //Debug.DrawRay(hit.point, hit.normal * -1, Color.red, 1.0f);
+                            //.DrawRay(hit.point, batVelocity[i], Color.green, 1.0f);
+                            //Debug.Log("hit.point = " + hit.point);
+                            //Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
                             var vectDif = (hit.point - batPosCurr[i]).normalized;
-                            baseballBatGhost.transform.position = baseballBatGhost.transform.position - (batPosCurr[i] - hit.point);
+
+                            baseballBatGhost.transform.position = baseballBatGhost.transform.position;// - (batPosCurr[i] - hit.point);
                             debugHitSpheres[0].transform.position = hit.point;
                             debugHitSpheres[1].transform.position = batPosCurr[i];
                             debugHitSpheres[2].transform.position = batPosPrev[i];
                             debugHitSpheres[3].transform.position = baseballBatGhost.transform.position;
                             debugHitSpheres[4].transform.position = hit.point + (vectDif * 0.05f);
+
+                            Vector3 glorp = hit.point + (vectDif * 0.05f);
+                            Vector3 glorp2 = glorp;
+
+                            Vector2 absolution = Vector2.zero;
+                            absolution.x = batPosPrev[i].x - batPosCurr[i].x;
+                            absolution.y = batPosPrev[i].z - batPosCurr[i].z;
+                            Vector2 retribution = new Vector2(absolution.y, -absolution.x);
+                            Debug.Log("absolution = " + absolution);
+                            Debug.Log("retribution = " + retribution);
+
+                            glorp2.x += retribution.x;
+                            glorp2.z += retribution.y;
+
+                            Debug.Log("batPosPrev = " + batPosPrev[i]);
+                            Debug.Log("batPosCurr = " + batPosCurr[i]);
+
+                            Vector3 playerCoords = player.GetPosition();
+                            playerCoords.y = glorp.y;
+
+                            Debug.DrawLine(glorp, playerCoords, Color.red, 1.0f);
+
+                            //Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
+                            //Debug.DrawLine(temp1, temp2, Color.red, 1.0f);
+                            //Debug.DrawLine(temp1, baseballBatGhost.transform.position, Color.red, 1.0f);
                             //baseballBatGhost.transform.position = batTransformPosPrevious;
                             //baseballBatGhost.transform.position = hit.point - ;
                         }
@@ -347,14 +375,14 @@ public class Sandbag : UdonSharpBehaviour
 
                         if (critRoll <= critChance)
                         {
-                            Debug.DrawRay(hit.point, resultantImpulse * 2, Color.yellow, 1.0f);
+                            //Debug.DrawRay(hit.point, resultantImpulse * 2, Color.yellow, 1.0f);
                             storedMomentum += (resultantImpulse * (m_ass / (float)batParts.Length)) * 2;
                             recentDamage += ((resultantImpulse * (m_ass / (float)batParts.Length)) * 2).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
                         }
                         else
                         {
-                            Debug.DrawRay(hit.point, resultantImpulse, Color.magenta, 1.0f);
+                            //Debug.DrawRay(hit.point, resultantImpulse, Color.magenta, 1.0f);
                             storedMomentum += resultantImpulse * (m_ass / (float)batParts.Length);
                             recentDamage += ((resultantImpulse * (m_ass / (float)batParts.Length))).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
@@ -426,18 +454,12 @@ public class Sandbag : UdonSharpBehaviour
         else
         {
             yetAnotherTimer += Time.deltaTime;
-            if (yetAnotherTimer > 1.0f)
+            if (yetAnotherTimer > 4.0f)
             {
+                baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
                 yetAnotherTimer = 0.0f;
                 yetAnotherBool = false;
             }
-        }
-
-        Debug.Log("yetAnotherBool = " +  yetAnotherBool);
-
-        if (damagetext == null)
-        {
-            Debug.Log("damagetext is null");
         }
 
         if (globalTimer < 1.0f)
