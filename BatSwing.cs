@@ -24,12 +24,14 @@ public class BatSwing : UdonSharpBehaviour
 
     private bool hasSwung = false;
 
+    Sandbag sandbagScript;
     Rigidbody batRB;
     float timer = 0.0f;
     bool freezeTimer = false;
 
     void Start()
     {
+        sandbagScript = Sandbag.GetComponent<Sandbag>();
         batRB = GetComponent<Rigidbody>();
     }
 
@@ -63,22 +65,13 @@ public class BatSwing : UdonSharpBehaviour
     
     public override void OnPickup()
     {
-        /*
-        if (hasSwung)
-        {
-            for (int i = 0; i < batParts.Length; i++)
-            {
-                batParts[i].GetComponent<Collider>().enabled = false;
-            }
-        }
-        else
-        {
-            for (int i = 0; i < batParts.Length; i++)
-            {
-                batParts[i].GetComponent<Collider>().enabled = true;
-            }
-        }
-        */
+        sandbagScript.SetProgramVariable("isBatHeld", true);
+    }
+
+    public override void OnDrop()
+    {
+        sandbagScript.SetProgramVariable("isBatHeld", false);
+        playerCamera.BatDropped();
     }
 
     public override void OnPickupUseDown()

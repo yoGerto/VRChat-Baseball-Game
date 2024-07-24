@@ -9,11 +9,6 @@ public class BatFollower : UdonSharpBehaviour
     public GameObject batToFollow;
     public bool lockBat = false;
 
-    void Start()
-    {
-        
-    }
-
     private void Update()
     {
         if (!lockBat)

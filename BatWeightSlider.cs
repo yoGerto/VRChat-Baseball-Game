@@ -10,7 +10,8 @@ public class BatWeightSlider : UdonSharpBehaviour
 {
     public TextMeshProUGUI costOfUpgrade;
     public TextMeshProUGUI debug;
-    public Sandbag sandbag;
+    public GameObject sandbag;
+    Sandbag sandbagScript;
     VRCPlayerApi player;
     Slider weightSlider;
     [UdonSynced] private float weightSliderValue;
@@ -18,13 +19,14 @@ public class BatWeightSlider : UdonSharpBehaviour
     [UdonSynced, FieldChangeCallback(nameof(moneyCallback))] private float moneyFromOutside = 10.0f;
     [UdonSynced] private float moneyFromInside = 10.0f;
     [UdonSynced] private float upgradeCost = 10.0f;
-    [UdonSynced] private float explosiveUpgradeCost = 500.0f;
+    [UdonSynced] private float explosiveUpgradeCost = 10.0f;
     private bool didIChangeTheValue = false;
 
     void Start()
     {
         player = Networking.LocalPlayer;
         weightSlider = this.GetComponent<Slider>();
+        sandbagScript = sandbag.GetComponent<Sandbag>();
     }
 
     public void WeightIncrease()
@@ -44,13 +46,17 @@ public class BatWeightSlider : UdonSharpBehaviour
 
     public void ExplosiveChargeUpgrade()
     {
-        Networking.SetOwner(player, this.gameObject);
+        if (Networking.GetOwner(this.gameObject) != player)
+        {
+            Networking.SetOwner(player, this.gameObject);
+        }
 
         if (moneyFromInside >= explosiveUpgradeCost)
         {
+            Networking.SetOwner(player, sandbag);
             moneyFromInside -= explosiveUpgradeCost;
             explosiveUpgradeCost *= 2.5f;
-            sandbag.SetProgramVariable("explosiveCharges", 1);
+            sandbagScript.SetProgramVariable("explosiveCharges", 1);
             RequestSerialization();
         }
     }
