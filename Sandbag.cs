@@ -56,6 +56,7 @@ public class Sandbag : UdonSharpBehaviour
 
     private Vector3 batTransformPosCurrent = Vector3.zero;
     private Vector3 batTransformPosPrevious = Vector3.zero;
+    private Vector3 batTransformVelocity = Vector3.zero;
 
     private int currentSecond, previousSecond = 0;
     private int critChance = 50;
@@ -263,6 +264,8 @@ public class Sandbag : UdonSharpBehaviour
         RaycastHit hit;
 
         batTransformPosCurrent = baseballBat.transform.position;
+        batTransformVelocity = (batTransformPosCurrent - batTransformPosPrevious) / Time.fixedDeltaTime;
+        batTransformPosPrevious = batTransformPosCurrent;
 
         for (int i = 0; i < batParts.Length; i++)
         {
@@ -277,52 +280,52 @@ public class Sandbag : UdonSharpBehaviour
                 {
                     if (Physics.Raycast(batPosPrev[i], (batPosCurr[i] - batPosPrev[i]), out hit, (batPosCurr[i] - batPosPrev[i]).magnitude, layerMask))
                     {
+                        /*
+                        syncStatusDebug3.text = "bat Pos = " + baseballBat.transform.position.ToString() + "\n";
+                        syncStatusDebug3.text += "bat part Pos = " + baseballBat.transform.GetChild(0).transform.GetChild(4).transform.position + "\n";
+
+                        syncStatusDebug2.text = "bat vel = " + batTransformVelocity.magnitude.ToString("0.00") + "\n";
+                        syncStatusDebug2.text += "bat part vel = " + batVelocity[0].magnitude.ToString("0.00") + "\n";
+                        syncStatusDebug2.text += "factor = " + (batVelocity[0].magnitude / batTransformVelocity.magnitude).ToString("0.00");
+                        */
+
+                        // Find the difference between hit.point and batPosCurr
+                        var hitDiff = batPosCurr[i] - hit.point;
+                        // Normalize this distance to get a unit direciton
+                        var hitDiffNormalized = hitDiff.normalized;
+                        // Find the new difference of a second point, which is the ideal transform point
+                        // This point is the hit distance minus a fraction of hitDiffNormalized, which is a unit line drawn from hitPosCurr to hit.point
+                        // Subtracting a fraction of this hitDiffNormalized variable creates a Vector3 position similar to the hit.position but it is slightly outside the sandbag
+                        var idealTransformPoint = hit.point - (hitDiffNormalized * 0.05f);
+                        // Then calculate this new difference in distance between the bat part that hit and the idealTransformPoint
+                        var newDiff = batPosCurr[i] - idealTransformPoint;
+
+                        // Calculate a factor of the ratio between how fast the bat is moving versus how fast the bat part that makes the collision is moving
+                        // If the bat part is moving faster than the bat (which it will under normal circumstances) then the factor will be less than 1
+                        // This factor is used to move the batTransform by a suitable amount based on how fast the bat part is moving
+                        // This calculation should let the code work with any bat part along the bat, so long as I have the velocity of that part.
+                        var inverseFactor = (batTransformVelocity.magnitude / batVelocity[0].magnitude);
+
                         if (yetAnotherBool == false)
                         {
                             baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeAll;
                             batShakeScript.SetProgramVariable("start", true);
                             yetAnotherBool = true;
                             Debug.DrawLine(batPosPrev[i], batPosCurr[i], Color.red, 1.0f);
-                            //Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
-                            //Debug.DrawRay(hit.point, hit.normal * -1, Color.red, 1.0f);
-                            //.DrawRay(hit.point, batVelocity[i], Color.green, 1.0f);
-                            //Debug.Log("hit.point = " + hit.point);
-                            //Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
-                            var vectDif = (hit.point - batPosCurr[i]).normalized;
 
-                            baseballBatGhost.transform.position = baseballBatGhost.transform.position;// - (batPosCurr[i] - hit.point);
+                            baseballBatGhost.transform.position = baseballBat.transform.position - (newDiff * inverseFactor);
+                            baseballBatGhost.transform.LookAt(idealTransformPoint, Vector3.up);
+                            // ...There has to be a cleaner way to do this but this gets me what I want for now
+                            baseballBatGhost.transform.rotation = Quaternion.Euler(baseballBatGhost.transform.eulerAngles.x + 90, baseballBatGhost.transform.eulerAngles.y, baseballBatGhost.transform.eulerAngles.z);
+
+                            /*
                             debugHitSpheres[0].transform.position = hit.point;
                             debugHitSpheres[1].transform.position = batPosCurr[i];
                             debugHitSpheres[2].transform.position = batPosPrev[i];
-                            debugHitSpheres[3].transform.position = baseballBatGhost.transform.position;
-                            debugHitSpheres[4].transform.position = hit.point + (vectDif * 0.05f);
-
-                            Vector3 glorp = hit.point + (vectDif * 0.05f);
-                            Vector3 glorp2 = glorp;
-
-                            Vector2 absolution = Vector2.zero;
-                            absolution.x = batPosPrev[i].x - batPosCurr[i].x;
-                            absolution.y = batPosPrev[i].z - batPosCurr[i].z;
-                            Vector2 retribution = new Vector2(absolution.y, -absolution.x);
-                            Debug.Log("absolution = " + absolution);
-                            Debug.Log("retribution = " + retribution);
-
-                            glorp2.x += retribution.x;
-                            glorp2.z += retribution.y;
-
-                            Debug.Log("batPosPrev = " + batPosPrev[i]);
-                            Debug.Log("batPosCurr = " + batPosCurr[i]);
-
-                            Vector3 playerCoords = player.GetPosition();
-                            playerCoords.y = glorp.y;
-
-                            Debug.DrawLine(glorp, playerCoords, Color.red, 1.0f);
-
-                            //Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
-                            //Debug.DrawLine(temp1, temp2, Color.red, 1.0f);
-                            //Debug.DrawLine(temp1, baseballBatGhost.transform.position, Color.red, 1.0f);
-                            //baseballBatGhost.transform.position = batTransformPosPrevious;
-                            //baseballBatGhost.transform.position = hit.point - ;
+                            debugHitSpheres[3].transform.position = baseballBat.transform.position;
+                            debugHitSpheres[4].transform.position = baseballBatGhost.transform.position;
+                            debugHitSpheres[5].transform.position = idealTransformPoint;
+                            */
                         }
 
                         // damagetext becomes null when the object instantiated to it is destroyed
@@ -340,7 +343,7 @@ public class Sandbag : UdonSharpBehaviour
                             damagetext.transform.GetChild(0).GetComponent<Animator>().Play("TextFloatAnimation", 0, 0.0f);
                         }
   
-                        //batPartHasSwung[i] = true;
+                        batPartHasSwung[i] = true;
 
                         // If we are here, that means the bat has made contact with the sandbag (presumably)
                         // The local player needs to be the owner of the Sandbag to update the networked variables, so make them the owner
@@ -405,7 +408,6 @@ public class Sandbag : UdonSharpBehaviour
             batPosPrev[i] = batPosCurr[i];
         }
 
-        batTransformPosPrevious = batTransformPosCurrent;
 
         if (timerLatch == 1)
         {
@@ -454,7 +456,7 @@ public class Sandbag : UdonSharpBehaviour
         else
         {
             yetAnotherTimer += Time.deltaTime;
-            if (yetAnotherTimer > 4.0f)
+            if (yetAnotherTimer > 1.0f)
             {
                 baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
                 yetAnotherTimer = 0.0f;
@@ -482,9 +484,8 @@ public class Sandbag : UdonSharpBehaviour
 
         currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
 
-        syncStatusDebug3.text = "yetAnotherBool = " + yetAnotherBool.ToString() + "\n";
+        //syncStatusDebug3.text = "yetAnotherBool = " + yetAnotherBool.ToString() + "\n";
 
-        //syncStatusDebug3.text = "bools[0] = " + bools[0].ToString() + "\n";
         //syncStatusDebug3.text += "boolsLocal[0] = " + boolsLocal[0].ToString() + "\n";
 
         //syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString() + "\n";
