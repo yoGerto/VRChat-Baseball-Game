@@ -98,7 +98,6 @@ public class Sandbag : UdonSharpBehaviour
         }
     }
 
-
     public void LaunchSandbag()
     {
         // If the player who clicks the Launch Sandbag script does not own the Sandbag, they will not be able to set UdonSynced variables
@@ -280,15 +279,6 @@ public class Sandbag : UdonSharpBehaviour
                 {
                     if (Physics.Raycast(batPosPrev[i], (batPosCurr[i] - batPosPrev[i]), out hit, (batPosCurr[i] - batPosPrev[i]).magnitude, layerMask))
                     {
-                        /*
-                        syncStatusDebug3.text = "bat Pos = " + baseballBat.transform.position.ToString() + "\n";
-                        syncStatusDebug3.text += "bat part Pos = " + baseballBat.transform.GetChild(0).transform.GetChild(4).transform.position + "\n";
-
-                        syncStatusDebug2.text = "bat vel = " + batTransformVelocity.magnitude.ToString("0.00") + "\n";
-                        syncStatusDebug2.text += "bat part vel = " + batVelocity[0].magnitude.ToString("0.00") + "\n";
-                        syncStatusDebug2.text += "factor = " + (batVelocity[0].magnitude / batTransformVelocity.magnitude).ToString("0.00");
-                        */
-
                         // Find the difference between hit.point and batPosCurr
                         var hitDiff = batPosCurr[i] - hit.point;
                         // Normalize this distance to get a unit direciton
@@ -308,24 +298,13 @@ public class Sandbag : UdonSharpBehaviour
 
                         if (yetAnotherBool == false)
                         {
-                            baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeAll;
                             batShakeScript.SetProgramVariable("start", true);
                             yetAnotherBool = true;
-                            Debug.DrawLine(batPosPrev[i], batPosCurr[i], Color.red, 1.0f);
 
                             baseballBatGhost.transform.position = baseballBat.transform.position - (newDiff * inverseFactor);
                             baseballBatGhost.transform.LookAt(idealTransformPoint, Vector3.up);
                             // ...There has to be a cleaner way to do this but this gets me what I want for now
                             baseballBatGhost.transform.rotation = Quaternion.Euler(baseballBatGhost.transform.eulerAngles.x + 90, baseballBatGhost.transform.eulerAngles.y, baseballBatGhost.transform.eulerAngles.z);
-
-                            /*
-                            debugHitSpheres[0].transform.position = hit.point;
-                            debugHitSpheres[1].transform.position = batPosCurr[i];
-                            debugHitSpheres[2].transform.position = batPosPrev[i];
-                            debugHitSpheres[3].transform.position = baseballBat.transform.position;
-                            debugHitSpheres[4].transform.position = baseballBatGhost.transform.position;
-                            debugHitSpheres[5].transform.position = idealTransformPoint;
-                            */
                         }
 
                         // damagetext becomes null when the object instantiated to it is destroyed
@@ -378,14 +357,12 @@ public class Sandbag : UdonSharpBehaviour
 
                         if (critRoll <= critChance)
                         {
-                            //Debug.DrawRay(hit.point, resultantImpulse * 2, Color.yellow, 1.0f);
                             storedMomentum += (resultantImpulse * (m_ass / (float)batParts.Length)) * 2;
                             recentDamage += ((resultantImpulse * (m_ass / (float)batParts.Length)) * 2).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
                         }
                         else
                         {
-                            //Debug.DrawRay(hit.point, resultantImpulse, Color.magenta, 1.0f);
                             storedMomentum += resultantImpulse * (m_ass / (float)batParts.Length);
                             recentDamage += ((resultantImpulse * (m_ass / (float)batParts.Length))).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
@@ -393,15 +370,6 @@ public class Sandbag : UdonSharpBehaviour
 
                         RequestSerialization();
                         OnDeserialization();
-
-                        //Debug.DrawRay(hit.point, resultantImpulse, Color.magenta, 1.0f);
-                        /*
-                        Debug.DrawRay(hit.point, hit.normal, Color.blue, 1.0f);
-                        Debug.DrawRay(hit.point, hit.normal * -1, Color.red, 1.0f);
-                        Debug.DrawRay(hit.point, batVelocity[i], Color.green, 1.0f);
-                        Debug.Log("hit.point = "+ hit.point);
-                        Debug.Log("baseballBat pos = " + baseballBatGhost.transform.position);
-                        */
                     }
                 }
             }
@@ -458,7 +426,6 @@ public class Sandbag : UdonSharpBehaviour
             yetAnotherTimer += Time.deltaTime;
             if (yetAnotherTimer > 1.0f)
             {
-                baseballBat.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
                 yetAnotherTimer = 0.0f;
                 yetAnotherBool = false;
             }
@@ -470,32 +437,7 @@ public class Sandbag : UdonSharpBehaviour
 
         }
 
-        if (freezeBatGhost)
-        {
-            freezeTimer += Time.deltaTime;
-            if (freezeTimer > 0.5)
-            {
-                //batGhostRB.constraints = RigidbodyConstraints.None;
-                batFollower.SetProgramVariable("lockBat", false);
-                freezeTimer = 0.0f;
-                freezeBatGhost = false;
-            }
-        }
-
         currentSecond = (int)Math.Truncate(Time.realtimeSinceStartup + timeOffset);
-
-        //syncStatusDebug3.text = "yetAnotherBool = " + yetAnotherBool.ToString() + "\n";
-
-        //syncStatusDebug3.text += "boolsLocal[0] = " + boolsLocal[0].ToString() + "\n";
-
-        //syncStatusDebug3.text += "globalTimer = " + globalTimer.ToString() + "\n";
-        //syncStatusDebug3.text += "testingInt = " + testingInt.ToString() + "\n";
-
-        //syncStatusDebug2.text = "timeOffset = " + timeOffset.ToString() + "\n";
-        //syncStatusDebug2.text += (Time.realtimeSinceStartup + timeOffset).ToString() + "\n";
-        //syncStatusDebug2.text += currentSecond.ToString() + "\n";
-        //syncStatusDebug2.text += explosiveChargesLocal.ToString() + "\n";
-        //syncStatusDebug2.text += previousSecond.ToString() + "\n";
 
         if (currentSecond != previousSecond)
         {
