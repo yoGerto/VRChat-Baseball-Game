@@ -85,9 +85,6 @@ public class BatWeightSlider : UdonSharpBehaviour
 
     public void Update()
     {
-        debug.text = moneyFromOutside.ToString() + "\n";
-        debug.text += moneyFromInside.ToString() + "\n";
-        debug.text += upgradeCost.ToString() + "\n";
         // This would mean the value has changed on the local player's side.
         // Which ever player experiences this becomes the owner of the slider for Serialization purposes.
         if (weightSlider.value != weightSliderPrevious)
@@ -111,6 +108,7 @@ public class BatWeightSlider : UdonSharpBehaviour
         if (!didIChangeTheValue)
         {
             weightSlider.value = weightSliderValue;
+            //weightSlider.SetValueWithoutNotify could be used instead?
             weightSliderPrevious = weightSlider.value;
         }
         didIChangeTheValue = false;

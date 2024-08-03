@@ -4,63 +4,104 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 using TMPro;
+using System;
+using UnityEngine.UI;
 
-public class Katana : UdonSharpBehaviour
+
+public enum Weapon
+{
+    Bat,
+    Katana
+}
+
+public class WeaponScript : UdonSharpBehaviour
 {
     public GameObject sandbag;
+    public GameObject baseballBatGhost;
     public GameObject weaponPartsParent;
     public GameObject floatingTextPrefab;
-    public GameObject[] weaponParts;
-    GameObject weapon;
+    public Slider weaponWeight;
+
+    [SerializeField] BatShake batShakeScript;
+    [SerializeField] GameObject godTest;
+    int weaponPartsCount;
+    Transform[] weaponParts;
+    Transform weapon;
     GameObject damagetext = null;
 
     private Vector3[] weaponVelocity, weaponPosCurr, weaponPosPrev;
     private Vector3 weaponTransformPosCurrent, weaponTransformPosPrevious, weaponTransformVelocity, resultantImpulse = Vector3.zero;
 
     private bool[] weaponPartHasSwung;
-    private bool isHeld, yetAnotherBool = false;
+    private bool isHeld = false;
+    [SerializeField] public bool yetAnotherBool = false;
 
-    private float yetAnotherTimer, recentDamage = 0.0f;
+    [SerializeField] private float yetAnotherTimer, recentDamage = 0.0f;
     private float m_ass = 1.4f;
 
     private int critChance = 50;
-    private int layerMask;
+    private const int layerMask = (1 << 23);
 
     VRCPlayerApi player;
+    Sandbag sandbagScript;
 
+    public Weapon weaponType;
+    // Bat == 0
+    // Katana == 1
+
+    
     void Start()
     {
-        weaponPosCurr = new Vector3[weaponParts.Length];
-        weaponPosPrev = new Vector3[weaponParts.Length];
-        weaponVelocity = new Vector3[weaponParts.Length];
-
-        weaponPartHasSwung = new bool[weaponParts.Length];
-        for (int i = 0; i < weaponParts.Length; i++)
+        if (weaponType == 0)
         {
+            godTest = baseballBatGhost.transform.GetChild(0).gameObject;
+            batShakeScript = baseballBatGhost.transform.GetChild(0).GetComponent<BatShake>();
+        }
+
+        weaponPartsCount = weaponPartsParent.transform.childCount;
+
+        weapon = transform.root;
+
+        weaponPosCurr = new Vector3[weaponPartsCount];
+        weaponPosPrev = new Vector3[weaponPartsCount];
+        weaponVelocity = new Vector3[weaponPartsCount];
+
+        weaponPartHasSwung = new bool[weaponPartsCount];
+
+        weaponParts = new Transform[weaponPartsCount];
+
+        for (int i = 0; i < weaponPartsCount; i++)
+        {
+            weaponParts[i] =  weaponPartsParent.transform.GetChild(i).transform;
             weaponPartHasSwung[i] = false;
         }
 
-        weapon = this.gameObject;
-
-        layerMask = (1 << 22) + (1 << 17) + (1 << 13);
-        // The mask we created previously needs to be flipped so everything other than the layers we defined ealier recieves collisions from the RayCast
-        layerMask = ~layerMask;
-
         player = Networking.LocalPlayer;
+
+        sandbagScript = sandbag.GetComponent<Sandbag>();
     }
 
-    // OnPickup and OnDrop are handled by a different script
+    public override void OnPickup()
+    {
+        isHeld = true;
+    }
+
+    public override void OnDrop()
+    {
+        isHeld = false;
+    }
 
     private void FixedUpdate()
     {
         RaycastHit hit;
 
-        weaponTransformPosCurrent = weapon.transform.position;
+        weaponTransformPosCurrent = weapon.position;
         weaponTransformVelocity = (weaponTransformPosCurrent - weaponTransformPosPrevious) / Time.fixedDeltaTime;
 
         for (int i = 0; i < weaponParts.Length; i++)
         {
-            weaponPosCurr[i] = weaponPartsParent.transform.GetChild(i).transform.position;
+            //weaponPosCurr[i] = weaponPartsParent.transform.GetChild(i).transform.position;
+            weaponPosCurr[i] = weaponParts[i].position;
             weaponVelocity[i] = (weaponPosCurr[i] - weaponPosPrev[i]) / Time.fixedDeltaTime;
 
             // Only do RayCasts whilst bat is being held
@@ -71,10 +112,6 @@ public class Katana : UdonSharpBehaviour
                 {
                     if (Physics.Raycast(weaponPosPrev[i], (weaponPosCurr[i] - weaponPosPrev[i]), out hit, (weaponPosCurr[i] - weaponPosPrev[i]).magnitude, layerMask))
                     {
-                        if (hit.collider.name == "Sandbag")
-                        {
-                            Debug.Log("gorp");
-                        }
                         // Find the difference between hit.point and batPosCurr
                         var hitDiff = weaponPosCurr[i] - hit.point;
                         // Normalize this distance to get a unit direciton
@@ -92,18 +129,17 @@ public class Katana : UdonSharpBehaviour
                         // This calculation should let the code work with any bat part along the bat, so long as I have the velocity of that part.
                         var inverseFactor = (weaponTransformVelocity.magnitude / weaponVelocity[0].magnitude);
 
-                        /*
-                        if (yetAnotherBool == false)
+                        
+                        if (yetAnotherBool == false && weaponType == 0)
                         {
-                            //batShakeScript.SetProgramVariable("start", true);
+                            batShakeScript.SetProgramVariable("start", true);
                             yetAnotherBool = true;
 
-                            baseballBatGhost.transform.position = baseballBat.transform.position - (newDiff * inverseFactor);
+                            baseballBatGhost.transform.position = weapon.transform.position - (newDiff * inverseFactor);
                             baseballBatGhost.transform.LookAt(idealTransformPoint, Vector3.up);
                             // ...There has to be a cleaner way to do this but this gets me what I want for now
                             baseballBatGhost.transform.rotation = Quaternion.Euler(baseballBatGhost.transform.eulerAngles.x + 90, baseballBatGhost.transform.eulerAngles.y, baseballBatGhost.transform.eulerAngles.z);
                         }
-                        */
 
                         // damagetext becomes null when the object instantiated to it is destroyed
                         // This can be used to not only contain a reference to the instantiated object, but also as a flag to check if floating damage text already exists
@@ -120,7 +156,7 @@ public class Katana : UdonSharpBehaviour
                             damagetext.transform.GetChild(0).GetComponent<Animator>().Play("TextFloatAnimation", 0, 0.0f);
                         }
 
-                        //weaponPartHasSwung[i] = true;
+                        weaponPartHasSwung[i] = true;
 
                         // If we are here, that means the weapon has made contact with the sandbag (presumably)
                         // The local player needs to be the owner of the Sandbag to update the networked variables, so make them the owner
@@ -130,6 +166,9 @@ public class Katana : UdonSharpBehaviour
                         }
 
                         // Invert the collision normal so it points to the centre of the Sandbag (roughly to the centre of mass)
+                        // Maybe could redo this section so the normal points towards the centre of mass, because of now it is just a 'normal' drawn away from the hit location
+                        // To expand on this, the line is drawn perpendicular to the mesh hit point, rather than towards the centre of mass, which I think might be more useful for this physics simulation
+                        // As this could possibly be used to calculate an angular rotation to apply at the time of launch
                         Vector3 hitNormalInverted = hit.normal * -1;
 
                         // Use Phythagoras theorem to calculate the unknown third side of a triangle
@@ -150,34 +189,48 @@ public class Katana : UdonSharpBehaviour
                         resultantImpulse.y = weaponVelocity[i].y * Mathf.Cos(angleBetweenNormalAndVelocity);
                         resultantImpulse.z = hitNormalInverted.z * (triangleSideB * Mathf.Cos(angleBetweenNormalAndVelocity));
 
-                        Debug.Log("resultant impulse = " + resultantImpulse);
-
                         // Roll for crit
-                        int critRoll = UnityEngine.Random.Range(1, 101);
+                        int critRoll =  UnityEngine.Random.Range(1, 101);
 
                         if (critRoll <= critChance)
                         {
-                            //storedMomentum += (resultantImpulse * (m_ass / (float)batParts.Length)) * 2;
+                            sandbagScript.SetProgramVariable("storedMomentum", (resultantImpulse * (m_ass / (float)weaponParts.Length)) * 2);
                             recentDamage += ((resultantImpulse * (m_ass / (float)weaponParts.Length)) * 2).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
                         }
                         else
                         {
-                            //storedMomentum += resultantImpulse * (m_ass / (float)batParts.Length);
+                            sandbagScript.SetProgramVariable("storedMomentum", (resultantImpulse * (m_ass / (float)weaponParts.Length)) * 2);
                             recentDamage += ((resultantImpulse * (m_ass / (float)weaponParts.Length))).magnitude;
                             damagetext.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = recentDamage.ToString("0.00");
                         }
-
-                        //RequestSerialization();
-                        //OnDeserialization();
                     }
                 }
             }
             weaponPosPrev[i] = weaponPosCurr[i];
         }
         weaponTransformPosPrevious = weaponTransformPosCurrent;
-        //Debug.Log(weaponVelocity[0]);
-        //Debug.Log(weaponTransformVelocity);
+    }
 
+    private void Update()
+    {
+        // If the weapon is a bat
+        if (weaponType == 0)
+        {
+            if (!yetAnotherBool)
+            {
+                baseballBatGhost.transform.position = weapon.transform.position;
+                baseballBatGhost.transform.rotation = weapon.transform.rotation;
+            }
+            else
+            {
+                yetAnotherTimer += Time.deltaTime;
+                if (yetAnotherTimer > 1.0f)
+                {
+                    yetAnotherTimer = 0.0f;
+                    yetAnotherBool = false;
+                }
+            }
+        }
     }
 }

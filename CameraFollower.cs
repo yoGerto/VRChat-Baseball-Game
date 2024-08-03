@@ -7,7 +7,7 @@ using VRC.Udon;
 public class CameraFollower : UdonSharpBehaviour
 {
     public GameObject sandbag;
-    public GameObject cameraFollower;
+    private GameObject cameraFollower;
 
     private Transform sandbagTransform;
     private Transform cameraFollowerTransform;
