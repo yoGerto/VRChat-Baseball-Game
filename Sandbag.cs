@@ -33,6 +33,8 @@ public class Sandbag : UdonSharpBehaviour
 
     private int currentSecond, previousSecond = 0;
 
+    public UpdateHasSwungState updateSwingStateScript;
+
     VRCPlayerApi player;
 
     [UdonSynced, FieldChangeCallback(nameof(ExplosiveChargeExternalHandler))]private int explosiveCharges = 0;
@@ -105,6 +107,8 @@ public class Sandbag : UdonSharpBehaviour
             RequestSerialization();
             OnDeserialization();
         }
+
+        updateSwingStateScript.SendCustomEvent("SwingStateReset");
 
         sandbagRB.velocity = Vector3.zero;
         sandbagRB.rotation = Quaternion.identity;
@@ -220,6 +224,7 @@ public class Sandbag : UdonSharpBehaviour
             timer += Time.deltaTime;
             if (timer > cooldownTime + 0.02f)
             {
+
                 storedMomentumLocal = Vector3.zero;
             }
             if (timer >= respawnTimeout)
@@ -260,6 +265,7 @@ public class Sandbag : UdonSharpBehaviour
 
         if (currentSecond != previousSecond)
         {
+            Debug.Log(storedMomentumLocal);
             if (globalTimer > 0.25)
             {
                 if (boolsLocal[0])

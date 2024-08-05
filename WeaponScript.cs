@@ -22,8 +22,10 @@ public class WeaponScript : UdonSharpBehaviour
     public GameObject floatingTextPrefab;
     public Slider weaponWeight;
 
-    [SerializeField] BatShake batShakeScript;
-    [SerializeField] GameObject godTest;
+    public UpdateHasSwungState updateSwingStateScript;
+
+    BatShake batShakeScript;
+
     int weaponPartsCount;
     Transform[] weaponParts;
     Transform weapon;
@@ -34,9 +36,10 @@ public class WeaponScript : UdonSharpBehaviour
 
     private bool[] weaponPartHasSwung;
     private bool isHeld = false;
-    [SerializeField] public bool yetAnotherBool = false;
+    private bool hasHit = false;
+    public bool yetAnotherBool = false;
 
-    [SerializeField] private float yetAnotherTimer, recentDamage = 0.0f;
+    private float yetAnotherTimer, recentDamage, hitTimer = 0.0f;
     private float m_ass = 1.4f;
 
     private int critChance = 50;
@@ -54,7 +57,6 @@ public class WeaponScript : UdonSharpBehaviour
     {
         if (weaponType == 0)
         {
-            godTest = baseballBatGhost.transform.GetChild(0).gameObject;
             batShakeScript = baseballBatGhost.transform.GetChild(0).GetComponent<BatShake>();
         }
 
@@ -84,11 +86,31 @@ public class WeaponScript : UdonSharpBehaviour
     public override void OnPickup()
     {
         isHeld = true;
+        if (weaponType == 0)
+        {
+            Networking.SetOwner(player, baseballBatGhost);
+        }
     }
 
     public override void OnDrop()
     {
         isHeld = false;
+    }
+
+    public void ResetSwing()
+    {
+        for (int i = 0; i < weaponPartsCount; i++)
+        {
+            weaponPartHasSwung[i] = false;
+        }
+    }
+
+    public void SetSwingTrue()
+    {
+        for (int i = 0; i < weaponPartsCount; i++)
+        {
+            weaponPartHasSwung[i] = true;
+        }
     }
 
     private void FixedUpdate()
@@ -132,7 +154,8 @@ public class WeaponScript : UdonSharpBehaviour
                         
                         if (yetAnotherBool == false && weaponType == 0)
                         {
-                            batShakeScript.SetProgramVariable("start", true);
+                            //batShakeScript.SetProgramVariable("start", true);
+                            batShakeScript.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "StartAnim");
                             yetAnotherBool = true;
 
                             baseballBatGhost.transform.position = weapon.transform.position - (newDiff * inverseFactor);
@@ -157,6 +180,7 @@ public class WeaponScript : UdonSharpBehaviour
                         }
 
                         weaponPartHasSwung[i] = true;
+                        hasHit = true;
 
                         // If we are here, that means the weapon has made contact with the sandbag (presumably)
                         // The local player needs to be the owner of the Sandbag to update the networked variables, so make them the owner
@@ -217,7 +241,7 @@ public class WeaponScript : UdonSharpBehaviour
         // If the weapon is a bat
         if (weaponType == 0)
         {
-            if (!yetAnotherBool)
+            if (!yetAnotherBool && Networking.GetOwner(baseballBatGhost) == player)
             {
                 baseballBatGhost.transform.position = weapon.transform.position;
                 baseballBatGhost.transform.rotation = weapon.transform.rotation;
@@ -232,5 +256,17 @@ public class WeaponScript : UdonSharpBehaviour
                 }
             }
         }
+
+        if (hasHit)
+        {
+            hitTimer += Time.deltaTime;
+            if (hitTimer > 0.5f)
+            {
+                hitTimer = 0.0f;
+                hasHit = false;
+                updateSwingStateScript.SendCustomEvent("SetSwingTrue");
+            }
+        }
+
     }
 }

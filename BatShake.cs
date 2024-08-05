@@ -17,6 +17,11 @@ public class BatShake : UdonSharpBehaviour
     private Vector3 startPos = Vector3.zero;
     private float elapsedTime = 0.0f;
 
+    public void StartAnim()
+    {
+        start = true;
+    }
+
     private void Update()
     {
         if (start)
